@@ -797,6 +797,45 @@
     outline-offset: 1px;
   }
 
+  /* ---------- ARRIVAL CELEBRATION (Dev Mode ride) ---------- */
+  .arrival-overlay {
+    position: fixed; inset: 0; z-index: 45;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+  }
+  .arrival-overlay.open { opacity: 1; pointer-events: auto; }
+  .arrival-card {
+    width: 100%; max-width: 320px; text-align: center;
+    background: var(--surface); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-float); padding: 24px 20px 18px;
+    transform: scale(0.85); transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .arrival-overlay.open .arrival-card { transform: scale(1); }
+  .arrival-emoji { font-size: 44px; line-height: 1; margin-bottom: 10px; }
+  .arrival-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .arrival-place { font-size: 14px; color: var(--text-secondary); margin: 0 0 14px; }
+  .arrival-stats {
+    display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text-primary); margin-bottom: 16px;
+  }
+  .arrival-stats span { background: var(--dev-pill-bg); padding: 4px 10px; border-radius: var(--radius-pill); }
+  .arrival-card .btn-primary { width: 100%; }
+  .confetti-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 60; pointer-events: none; }
+
+  /* ---------- MODE TOAST ---------- */
+  .mode-toast {
+    position: fixed; left: 50%; bottom: 200px; z-index: 46;
+    transform: translate(-50%, 8px);
+    background: rgba(28, 28, 30, 0.92); color: #fff;
+    font-size: 13px; font-weight: 500; white-space: nowrap;
+    padding: 9px 16px; border-radius: var(--radius-pill);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .mode-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
   /* ---------- DESKTOP (matches DESKTOP_QUERY in the script) ----------
      Zoom/compass move to the right-middle, and BusBoy opens as a
      support-style popover above its button instead of a bottom sheet.
@@ -992,6 +1031,19 @@
       </div>
     </div>
   </div>
+
+  <!-- ARRIVAL CELEBRATION (Dev Mode "I'm Riding This Bus") -->
+  <div class="arrival-overlay" id="arrivalOverlay" role="dialog" aria-modal="true" aria-labelledby="arrivalTitle">
+    <div class="arrival-card">
+      <div class="arrival-emoji" aria-hidden="true">🎉</div>
+      <p class="arrival-title" id="arrivalTitle">You've arrived!</p>
+      <p class="arrival-place" id="arrivalPlace">Welcome to your destination.</p>
+      <div class="arrival-stats" id="arrivalStats"></div>
+      <button class="btn-primary" id="arrivalDone" type="button">Done</button>
+    </div>
+  </div>
+
+  <div class="mode-toast" id="modeToast" role="status" aria-live="polite"></div>
 
   <!-- BUS DETAIL SHEET (opens on "Track this Bus") -->
   <div class="bus-sheet-overlay" id="busSheetOverlay">
@@ -1235,6 +1287,7 @@
 
   devSwitch.addEventListener('click', () => {
     const isOn = devSwitch.classList.toggle('on');
+    if (isOn) snapshotLiveState(); // remember the real app state before simulating anything
     modePill.textContent = isOn ? 'DEV' : 'DEMO';
     devControls.classList.toggle('visible', isOn);
     // Dev clock always starts from the real present at 1x, so turning
@@ -1252,9 +1305,11 @@
       renderWeather(liveCondition, liveTemp);
     } else {
       renderWeather(liveCondition, liveTemp); // hand control back to live data
+      restoreLiveState();
     }
     updateRideToggleVisibility();
     updateChatSubtitleLive();
+    showModeToast(isOn ? 'Dev Mode on · simulated data' : 'Back to live · Dev simulation reset');
   });
 
   devTempInput.addEventListener('input', () => {
@@ -2229,11 +2284,10 @@
     etaLabel.textContent = 'Tracking · ' + bus.plate;
     etaPlateEl.textContent = 'Plate ' + bus.plate;
     if (isRidingBus) {
-      const destKm = destinationCoord ? distanceAlongRouteForCoord(destinationCoord) : (bus.direction === 1 ? totalRouteKm : 0);
-      const destName = destinationCoord ? destinationInput.value : (bus.direction === 1 ? 'Sta. Cruz' : 'Caloocan');
-      const aheadKm = (destKm - bus.distanceKm) * bus.direction;
+      const destName = rideTarget ? rideTarget.name : '';
+      const aheadKm = rideTarget ? rideAheadKm(bus) : 0;
       let text;
-      if (aheadKm < -0.2) text = 'Past your stop';
+      if (aheadKm < -0.2) text = 'Going the other way'; // boarded a bus heading away; it'll turn back
       else if (aheadKm < 0.2) text = 'Arriving now';
       else text = Math.max(1, Math.round((aheadKm / Math.max(bus.baseSpeed * multiplier, 5)) * 60)) + ' min to go';
       etaLabel.textContent = 'Riding · ' + bus.plate;
@@ -2352,12 +2406,142 @@
   // Rider pin sits on the bus's top-right edge so both pins stay visible
   // but read as one unit ("I'm on this bus").
   const RIDING_PIN_OFFSET = [15, -15];
+  const ARRIVE_KM = 0.15;
+
+  // Where this ride ends: your destination if set, otherwise the terminus
+  // the bus was heading to when you boarded (locked, so it doesn't flip
+  // when the bus turns around).
+  let rideTarget = null;   // { km, name }
+  let rideStats = null;    // { plate, startSimMs, travelledKm, lastKm }
+  let ridePrevAheadKm = null;
+
+  function computeRideTarget(bus) {
+    if (destinationCoord) return { km: distanceAlongRouteForCoord(destinationCoord), name: destinationInput.value };
+    const north = bus.direction === 1;
+    return { km: north ? totalRouteKm : 0, name: north ? 'Sta. Cruz' : 'Caloocan' };
+  }
+  function rideAheadKm(bus) { return (rideTarget.km - bus.distanceKm) * bus.direction; }
 
   function updateRide(bus) {
     const busPt = pointAtDistance(bus.distanceKm);
     originCoord = busPt;
     if (originMarker) originMarker.setLngLat(busPt).setOffset(RIDING_PIN_OFFSET);
+    if (rideStats) {
+      rideStats.travelledKm += Math.abs(bus.distanceKm - rideStats.lastKm);
+      rideStats.lastKm = bus.distanceKm;
+    }
+    // Arrival = the stop went from "ahead" to "reached or just passed" since
+    // the last update. Checking a crossing (not just "is it close") matters
+    // when fast-forwarding, where one update can move a bus ~2 km.
+    const ahead = rideAheadKm(bus);
+    if (ridePrevAheadKm !== null && ridePrevAheadKm > ARRIVE_KM && ahead <= ARRIVE_KM) {
+      arriveAtDestination(bus);
+      return;
+    }
+    ridePrevAheadKm = ahead;
     drawMyTripLine();
+  }
+
+  function arriveAtDestination(bus) {
+    const target = rideTarget;
+    const stats = rideStats;
+    // Don't count the bit the bus rolled past the stop before we noticed.
+    const overshootKm = Math.max(0, -rideAheadKm(bus));
+    const km = Math.max(0, stats.travelledKm - overshootKm);
+    const minutes = Math.max(1, Math.round((nowMs() - stats.startSimMs) / 60000 - (overshootKm / bus.baseSpeed) * 60));
+    stopTracking(); // ends the ride and closes the bus sheet: you've gotten off
+    // Put you exactly at your stop (the bus may have rolled slightly past it).
+    const stopPt = pointAtDistance(target.km);
+    originCoord = stopPt;
+    if (originMarker) originMarker.setLngLat(stopPt).setOffset([0, 0]);
+    locationInput.value = target.name;
+    if (destinationCoord) clearDestination(); // trip complete — you're there now
+    showArrival(target.name, stats.plate, minutes, km);
+  }
+
+  const arrivalOverlay = document.getElementById('arrivalOverlay');
+  function formatDuration(min) {
+    if (min < 60) return min + ' min';
+    const h = Math.floor(min / 60), m = min % 60;
+    return h + ' hr' + (m ? ' ' + m + ' min' : '');
+  }
+  function showArrival(placeName, plate, minutes, km) {
+    document.getElementById('arrivalPlace').textContent = 'Welcome to ' + placeName + '.';
+    const stats = document.getElementById('arrivalStats');
+    stats.innerHTML = '';
+    ['Bus ' + plate, formatDuration(minutes), km.toFixed(1) + ' km'].forEach(t => {
+      const el = document.createElement('span'); el.textContent = t; stats.appendChild(el);
+    });
+    arrivalOverlay.classList.add('open');
+    document.getElementById('arrivalDone').focus();
+    launchConfetti();
+  }
+  function closeArrival() {
+    arrivalOverlay.classList.remove('open');
+    stopConfetti();
+  }
+  document.getElementById('arrivalDone').addEventListener('click', closeArrival);
+  arrivalOverlay.addEventListener('click', (e) => { if (e.target === arrivalOverlay) closeArrival(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && arrivalOverlay.classList.contains('open')) closeArrival();
+  });
+
+  /* Confetti — dependency-free canvas burst, ~4 s, skipped for
+     people who've asked their OS for reduced motion. */
+  let confettiFrame = null, confettiCanvas = null;
+  function launchConfetti() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    stopConfetti();
+    const canvas = document.createElement('canvas');
+    canvas.className = 'confetti-canvas';
+    document.body.appendChild(canvas);
+    confettiCanvas = canvas;
+    const dpr = window.devicePixelRatio || 1;
+    const W = window.innerWidth, H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const colors = ['#007AFF', '#FF3B30', '#34C759', '#FFCC00', '#FF9500', '#AF52DE', '#FF6961'];
+    const pieces = [];
+    for (let i = 0; i < 180; i++) {
+      const fromLeft = i % 2 === 0; // two cannons from the lower corners
+      const angle = (fromLeft ? -60 : -120) + (Math.random() - 0.5) * 40;
+      const speed = 9 + Math.random() * 9;
+      pieces.push({
+        x: fromLeft ? -10 : W + 10, y: H * 0.75,
+        vx: Math.cos(angle * Math.PI / 180) * speed, vy: Math.sin(angle * Math.PI / 180) * speed,
+        w: 6 + Math.random() * 6, h: 8 + Math.random() * 8,
+        rot: Math.random() * 360, vrot: (Math.random() - 0.5) * 16,
+        color: colors[i % colors.length], delay: Math.random() * 18
+      });
+    }
+    const start = performance.now(), DURATION = 4200;
+    function frame(t) {
+      const elapsed = t - start;
+      ctx.clearRect(0, 0, W, H);
+      const fade = elapsed > DURATION - 900 ? Math.max(0, (DURATION - elapsed) / 900) : 1;
+      pieces.forEach(p => {
+        if (p.delay > 0) { p.delay--; return; }
+        p.vy += 0.28; p.vx *= 0.99; p.vy *= 0.99;
+        p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot * Math.PI / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.rot * Math.PI / 90))); // flutter
+        ctx.restore();
+      });
+      if (elapsed < DURATION) confettiFrame = requestAnimationFrame(frame);
+      else stopConfetti();
+    }
+    confettiFrame = requestAnimationFrame(frame);
+  }
+  function stopConfetti() {
+    if (confettiFrame) cancelAnimationFrame(confettiFrame);
+    confettiFrame = null;
+    if (confettiCanvas) confettiCanvas.remove();
+    confettiCanvas = null;
   }
 
   function toggleRiding() {
@@ -2383,6 +2567,9 @@
         etaCard.classList.remove('hidden');
       }
       locationInput.value = 'On bus ' + bus.plate;
+      rideTarget = computeRideTarget(bus);
+      rideStats = { plate: bus.plate, startSimMs: nowMs(), travelledKm: 0, lastKm: bus.distanceKm };
+      ridePrevAheadKm = null;
       updateRide(bus);
     } else {
       if (map.getLayer('zambales-route-line')) {
@@ -2396,6 +2583,7 @@
       if (originCoord) locationInput.value = 'Current Location (simulated)';
       busSheetEtaLabel.textContent = 'Estimated arrival';
       busSheetGetDirectionsBtn.classList.remove('hidden');
+      rideTarget = null; rideStats = null; ridePrevAheadKm = null;
     }
   }
 
@@ -2753,6 +2941,10 @@
   function setDestination(coord, name, needsReverseGeocode) {
     destinationCoord = coord;
     destinationInput.value = name;
+    if (isRidingBus) {
+      const ridden = fleet.find(b => b.id === trackedBusId);
+      if (ridden) { rideTarget = computeRideTarget(ridden); ridePrevAheadKm = rideAheadKm(ridden); }
+    }
     if (destinationMarker) destinationMarker.remove();
     destinationMarker = new maplibregl.Marker({ element: makeDestEl() }).setLngLat(coord).addTo(map);
     etaLabel.textContent = 'Nearest bus · to ' + name;
@@ -2761,10 +2953,103 @@
       reverseGeocode(coord).then(label => {
         if (destinationInput.value === 'Locating…') {
           destinationInput.value = label;
+          if (rideTarget && rideTarget.name === 'Locating…') rideTarget.name = label;
           etaLabel.textContent = 'Nearest bus · to ' + label;
         }
       });
     }
+  }
+
+  /* =========================================================
+     DEV MODE -> LIVE RESET
+     Turning Dev Mode on snapshots the real app state; turning it off
+     throws away everything the simulation touched (ride, tracking,
+     directions, pins moved or set while simulating, map view) and
+     puts that snapshot back, so viewers see a clean return to live.
+     ========================================================= */
+  let preDevState = null;
+
+  function snapshotLiveState() {
+    const c = map.getCenter();
+    preDevState = {
+      origin: originCoord ? originCoord.slice() : null,
+      originLabel: locationInput.value,
+      dest: destinationCoord ? destinationCoord.slice() : null,
+      destName: destinationInput.value,
+      trackedBusId,
+      sheetOpen: busSheetOverlay.classList.contains('open'),
+      guideActive: guideRouteActive,
+      camera: { center: [c.lng, c.lat], zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() }
+    };
+  }
+
+  function placeOriginMarker(coord, label) {
+    originCoord = coord;
+    locationInput.value = label;
+    if (originMarker) originMarker.remove();
+    originMarker = new maplibregl.Marker({ element: makeUserEl() }).setLngLat(coord).addTo(map);
+    etaCard.classList.remove('hidden');
+  }
+  function clearOrigin() {
+    originCoord = null;
+    locationInput.value = '';
+    if (originMarker) { originMarker.remove(); originMarker = null; }
+    etaCard.classList.add('hidden');
+  }
+  function placeDestinationMarker(coord, name) {
+    destinationCoord = coord;
+    destinationInput.value = name;
+    if (destinationMarker) destinationMarker.remove();
+    destinationMarker = new maplibregl.Marker({ element: makeDestEl() }).setLngLat(coord).addTo(map);
+    etaLabel.textContent = 'Nearest bus · to ' + name;
+  }
+  function clearDestination() {
+    destinationCoord = null;
+    destinationInput.value = '';
+    if (destinationMarker) { destinationMarker.remove(); destinationMarker = null; }
+    etaLabel.textContent = 'Nearest bus · Olongapo-bound';
+  }
+
+  function restoreLiveState() {
+    const snap = preDevState;
+    preDevState = null;
+    closeArrival();
+    if (pinModeTarget !== null) exitPinMode();
+    stopTracking(); // also ends any ride and clears the directions line
+    if (!snap) return;
+
+    if (snap.origin) placeOriginMarker(snap.origin, snap.originLabel); else clearOrigin();
+    if (snap.dest) placeDestinationMarker(snap.dest, snap.destName); else clearDestination();
+
+    // Buses jump straight back to their real live positions.
+    maybeRegenerateFleet();
+    positionFleet();
+
+    if (snap.trackedBusId !== null) {
+      const bus = fleet.find(b => b.id === snap.trackedBusId);
+      if (bus) {
+        openBusSheet(bus);
+        if (snap.guideActive && originCoord) {
+          expandDirections();
+          busSheetGuideInfo.classList.remove('hidden');
+          guideToBus(bus, { silent: true }); // silent: don't override the restored camera
+        }
+        if (!snap.sheetOpen) minimizeBusSheet();
+      }
+    }
+    map.easeTo({ ...snap.camera, duration: 900 });
+  }
+
+  const modeToast = document.getElementById('modeToast');
+  let modeToastTimer = null;
+  function showModeToast(text) {
+    const stackRect = bottomStack.getBoundingClientRect();
+    const aboveStack = stackRect.height > 0 ? window.innerHeight - stackRect.top + 12 : 120;
+    modeToast.style.bottom = aboveStack + 'px';
+    modeToast.textContent = text;
+    modeToast.classList.add('show');
+    clearTimeout(modeToastTimer);
+    modeToastTimer = setTimeout(() => modeToast.classList.remove('show'), 2600);
   }
 
   // Fix #7: name a manually-pinned point via free reverse geocoding
