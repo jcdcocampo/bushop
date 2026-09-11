@@ -2562,42 +2562,42 @@
       towns: [[0, "Manila", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Mabalacat", "Pampanga"], [9, "Bamban", "Tarlac"], [11, "Capas", "Tarlac"], [16, "Tarlac City", "Tarlac"], [18, "Gerona", "Tarlac"], [19, "Pura", "Tarlac"], [20, "Guimba", "Nueva Ecija"], [21, "Sto. Domingo", "Nueva Ecija"], [22, "Muñoz", "Nueva Ecija"], [23, "San José City", "Nueva Ecija"], [27, "Carranglan", "Nueva Ecija"], [39, "Santa Fe", "Nueva Vizcaya"], [43, "Aritao", "Nueva Vizcaya"], [47, "Dupax del Sur", "Nueva Vizcaya"], [48, "Bambang", "Nueva Vizcaya"], [51, "Bayombong", "Nueva Vizcaya"], [56, "Solano", "Nueva Vizcaya"], [57, "Bagabag", "Nueva Vizcaya"], [61, "Diadi", "Nueva Vizcaya"], [66, "Cordon", "Isabela"], [68, "Santiago City", "Isabela"], [72, "Echague", "Isabela"], [74, "Alicia", "Isabela"], [77, "Cauayan City", "Isabela"], [81, "Reina Mercedes", "Isabela"], [82, "Naguilian", "Isabela"], [84, "Gamu", "Isabela"], [85, "Ilagan City", "Isabela"], [94, "Tumauini", "Isabela"], [100, "Cabagan", "Isabela"], [103, "San Pablo", "Isabela"], [106, "Tuguegarao City", "Cagayan"], [112, "Solana", "Cagayan"], [117, "Piat", "Cagayan"], [119, "Tuao", "Cagayan"]],
       roads: [[0, "A. Bonifacio Avenue"], [1, "NLEX (E1)"], [3, "MacArthur Highway"], [18, "Gerona–Pura–Guimba Road"], [22, "Daang Maharlika"], [105, "Cagayan Valley Road"], [111, "Cagayan–Apayao Road"]],
       roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
-    { id: "zambales-ic", kind: 'inner', origin: 'pasay', line: "zambales", anchors: METRO_ANCHORS.concat([TABANG_IC], ZAMBALES_BASE.slice(11)), ends: ["Pasay", "Sta. Cruz"], outbound: "toward Olongapo / Iba / Sta. Cruz",
+    { id: "zambales-ic", kind: 'inner', origin: 'pasay', line: "zambales", anchors: METRO_ANCHORS.concat([TABANG_IC], ZAMBALES_BASE.slice(12)), ends: ["Pasay", "Sta. Cruz"], outbound: "toward Olongapo / Iba / Sta. Cruz",
       busIdOffset: 30000, seedSalt: 112648, peakBuses: 72,
-      nlexToTabang: { bal: 21, tabang: 23 }, fixedLegKm: {"21": 23.33, "22": 3.56},
-      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Balagtas", "Bulacan"], [23, "Guiguinto", "Bulacan"], [24, "Malolos", "Bulacan"], [29, "Calumpit", "Bulacan"], [32, "Apalit", "Pampanga"], [34, "San Simon", "Pampanga"], [35, "Minalin", "Pampanga"], [36, "Sto. Tomas", "Pampanga"], [38, "San Fernando", "Pampanga"], [44, "Bacolor", "Pampanga"], [46, "Guagua", "Pampanga"], [48, "Lubao", "Pampanga"], [56, "Hermosa", "Bataan"], [57, "Dinalupihan", "Bataan"], [64, "Olongapo", "Zambales"], [69, "Subic", "Zambales"], [75, "Castillejos", "Zambales"], [78, "San Marcelino", "Zambales"], [80, "San Narciso", "Zambales"], [82, "San Felipe", "Zambales"], [87, "Cabangan", "Zambales"], [94, "Botolan", "Zambales"], [100, "Iba", "Zambales"], [105, "Palauig", "Zambales"], [108, "Masinloc", "Zambales"], [111, "Candelaria", "Zambales"], [115, "Sta. Cruz", "Zambales"]],
-      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [41, "Jose Abad Santos Avenue (JASA)"], [66, "Olongapo–Bugallon Road"]],
-      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 48.704}, {"anchor": 66, "km": 148.304}, {"anchor": 100, "km": 219.704}, {"anchor": 119, "km": 282.204}], fareShortcuts: [] },
-    { id: "pangasinan-ic", kind: 'inner', origin: 'pasay', line: "pangasinan", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(11)), ends: ["Pasay", "Bolinao"], outbound: "toward Dagupan / Lingayen / Alaminos / Bolinao",
+      nlexToTabang: { bal: 21, ic: 22, spurKm: 3.3 }, fixedLegKm: {"21": 23.53},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [21, "Quezon City", "Metro Manila"], [22, "Guiguinto", "Bulacan"], [23, "Malolos", "Bulacan"], [28, "Calumpit", "Bulacan"], [31, "Apalit", "Pampanga"], [33, "San Simon", "Pampanga"], [34, "Minalin", "Pampanga"], [35, "Sto. Tomas", "Pampanga"], [37, "San Fernando", "Pampanga"], [43, "Bacolor", "Pampanga"], [45, "Guagua", "Pampanga"], [47, "Lubao", "Pampanga"], [55, "Hermosa", "Bataan"], [56, "Dinalupihan", "Bataan"], [63, "Olongapo", "Zambales"], [68, "Subic", "Zambales"], [74, "Castillejos", "Zambales"], [77, "San Marcelino", "Zambales"], [79, "San Narciso", "Zambales"], [81, "San Felipe", "Zambales"], [86, "Cabangan", "Zambales"], [93, "Botolan", "Zambales"], [99, "Iba", "Zambales"], [104, "Palauig", "Zambales"], [107, "Masinloc", "Zambales"], [110, "Candelaria", "Zambales"], [114, "Sta. Cruz", "Zambales"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [40, "Jose Abad Santos Avenue (JASA)"], [65, "Olongapo–Bugallon Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 50.329}, {"anchor": 65, "km": 149.479}, {"anchor": 99, "km": 220.879}, {"anchor": 118, "km": 283.379}], fareShortcuts: [] },
+    { id: "pangasinan-ic", kind: 'inner', origin: 'pasay', line: "pangasinan", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(12)), ends: ["Pasay", "Bolinao"], outbound: "toward Dagupan / Lingayen / Alaminos / Bolinao",
       busIdOffset: 31000, seedSalt: 120567, peakBuses: 68,
-      nlexToTabang: { bal: 21, tabang: 23 }, fixedLegKm: {"21": 23.33, "22": 3.56},
-      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Balagtas", "Bulacan"], [23, "Guiguinto", "Bulacan"], [24, "Malolos", "Bulacan"], [29, "Calumpit", "Bulacan"], [32, "Apalit", "Pampanga"], [34, "San Simon", "Pampanga"], [35, "Minalin", "Pampanga"], [36, "Sto. Tomas", "Pampanga"], [38, "San Fernando", "Pampanga"], [41, "Angeles", "Pampanga"], [44, "Mabalacat", "Pampanga"], [50, "Bamban", "Tarlac"], [52, "Capas", "Tarlac"], [57, "Tarlac City", "Tarlac"], [59, "Gerona", "Tarlac"], [60, "Paniqui", "Tarlac"], [61, "San Manuel", "Tarlac"], [63, "Rosales", "Pangasinan"], [64, "Villasis", "Pangasinan"], [66, "Urdaneta", "Pangasinan"], [68, "Sta. Barbara", "Pangasinan"], [69, "Calasiao", "Pangasinan"], [70, "Dagupan", "Pangasinan"], [72, "Binmaley", "Pangasinan"], [76, "Lingayen", "Pangasinan"], [80, "Labrador", "Pangasinan"], [84, "Sual", "Pangasinan"], [90, "Alaminos", "Pangasinan"], [94, "Bani", "Pangasinan"], [100, "Bolinao", "Pangasinan"]],
-      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [66, "Urdaneta–Dagupan Road"], [70, "Dagupan–Lingayen Road"], [76, "Lingayen–Labrador Road"], [81, "Pangasinan–Zambales Road"], [92, "Alaminos–Bolinao Road"]],
-      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 48.704}, {"anchor": 40, "km": 86.434}], fareShortcuts: [{"fromAnchor": 58, "toAnchor": 81, "roadKm": 88.2, "via": "Camiling"}] },
-    { id: "baguio-ic", kind: 'inner', origin: 'pasay', line: "baguio", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(11, 55).concat(BAGUIO_EXT)), ends: ["Pasay", "Baguio City"], outbound: "toward Urdaneta / Sison / Baguio",
+      nlexToTabang: { bal: 21, ic: 22, spurKm: 3.3 }, fixedLegKm: {"21": 23.53},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [21, "Quezon City", "Metro Manila"], [22, "Guiguinto", "Bulacan"], [23, "Malolos", "Bulacan"], [28, "Calumpit", "Bulacan"], [31, "Apalit", "Pampanga"], [33, "San Simon", "Pampanga"], [34, "Minalin", "Pampanga"], [35, "Sto. Tomas", "Pampanga"], [37, "San Fernando", "Pampanga"], [40, "Angeles", "Pampanga"], [43, "Mabalacat", "Pampanga"], [49, "Bamban", "Tarlac"], [51, "Capas", "Tarlac"], [56, "Tarlac City", "Tarlac"], [58, "Gerona", "Tarlac"], [59, "Paniqui", "Tarlac"], [60, "San Manuel", "Tarlac"], [62, "Rosales", "Pangasinan"], [63, "Villasis", "Pangasinan"], [65, "Urdaneta", "Pangasinan"], [67, "Sta. Barbara", "Pangasinan"], [68, "Calasiao", "Pangasinan"], [69, "Dagupan", "Pangasinan"], [71, "Binmaley", "Pangasinan"], [75, "Lingayen", "Pangasinan"], [79, "Labrador", "Pangasinan"], [83, "Sual", "Pangasinan"], [89, "Alaminos", "Pangasinan"], [93, "Bani", "Pangasinan"], [99, "Bolinao", "Pangasinan"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [65, "Urdaneta–Dagupan Road"], [69, "Dagupan–Lingayen Road"], [75, "Lingayen–Labrador Road"], [80, "Pangasinan–Zambales Road"], [91, "Alaminos–Bolinao Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 50.329}, {"anchor": 39, "km": 87.609}], fareShortcuts: [{"fromAnchor": 57, "toAnchor": 80, "roadKm": 88.2, "via": "Camiling"}] },
+    { id: "baguio-ic", kind: 'inner', origin: 'pasay', line: "baguio", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(12, 55).concat(BAGUIO_EXT)), ends: ["Pasay", "Baguio City"], outbound: "toward Urdaneta / Sison / Baguio",
       busIdOffset: 32000, seedSalt: 128486, peakBuses: 80,
-      nlexToTabang: { bal: 21, tabang: 23 }, fixedLegKm: {"21": 23.33, "22": 3.56},
-      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Balagtas", "Bulacan"], [23, "Guiguinto", "Bulacan"], [24, "Malolos", "Bulacan"], [29, "Calumpit", "Bulacan"], [32, "Apalit", "Pampanga"], [34, "San Simon", "Pampanga"], [35, "Minalin", "Pampanga"], [36, "Sto. Tomas", "Pampanga"], [38, "San Fernando", "Pampanga"], [41, "Angeles", "Pampanga"], [44, "Mabalacat", "Pampanga"], [50, "Bamban", "Tarlac"], [52, "Capas", "Tarlac"], [57, "Tarlac City", "Tarlac"], [59, "Gerona", "Tarlac"], [60, "Paniqui", "Tarlac"], [61, "San Manuel", "Tarlac"], [63, "Rosales", "Pangasinan"], [64, "Villasis", "Pangasinan"], [66, "Urdaneta", "Pangasinan"], [69, "Binalonan", "Pangasinan"], [73, "Pozorrubio", "Pangasinan"], [75, "Sison", "Pangasinan"], [77, "Rosario", "La Union"], [79, "Pugo", "La Union"], [90, "Tuba", "Benguet"], [91, "Baguio City", "Benguet"]],
-      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [78, "Rosario–Pugo Road"], [87, "Marcos Highway"]],
-      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 48.704}, {"anchor": 40, "km": 86.434}], fareShortcuts: [] },
-    { id: "cagayan-ic", kind: 'inner', origin: 'pasay', line: "cagayan", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(11, 48).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, CAGAYAN_APARRI)), ends: ["Pasay", "Aparri"], outbound: "toward Santiago / Ilagan / Tuguegarao / Aparri",
+      nlexToTabang: { bal: 21, ic: 22, spurKm: 3.3 }, fixedLegKm: {"21": 23.53},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [21, "Quezon City", "Metro Manila"], [22, "Guiguinto", "Bulacan"], [23, "Malolos", "Bulacan"], [28, "Calumpit", "Bulacan"], [31, "Apalit", "Pampanga"], [33, "San Simon", "Pampanga"], [34, "Minalin", "Pampanga"], [35, "Sto. Tomas", "Pampanga"], [37, "San Fernando", "Pampanga"], [40, "Angeles", "Pampanga"], [43, "Mabalacat", "Pampanga"], [49, "Bamban", "Tarlac"], [51, "Capas", "Tarlac"], [56, "Tarlac City", "Tarlac"], [58, "Gerona", "Tarlac"], [59, "Paniqui", "Tarlac"], [60, "San Manuel", "Tarlac"], [62, "Rosales", "Pangasinan"], [63, "Villasis", "Pangasinan"], [65, "Urdaneta", "Pangasinan"], [68, "Binalonan", "Pangasinan"], [72, "Pozorrubio", "Pangasinan"], [74, "Sison", "Pangasinan"], [76, "Rosario", "La Union"], [78, "Pugo", "La Union"], [89, "Tuba", "Benguet"], [90, "Baguio City", "Benguet"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [77, "Rosario–Pugo Road"], [86, "Marcos Highway"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 50.329}, {"anchor": 39, "km": 87.609}], fareShortcuts: [] },
+    { id: "cagayan-ic", kind: 'inner', origin: 'pasay', line: "cagayan", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(12, 48).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, CAGAYAN_APARRI)), ends: ["Pasay", "Aparri"], outbound: "toward Santiago / Ilagan / Tuguegarao / Aparri",
       busIdOffset: 33000, seedSalt: 136405, peakBuses: 80,
-      nlexToTabang: { bal: 21, tabang: 23 }, fixedLegKm: {"21": 23.33, "22": 3.56},
-      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Balagtas", "Bulacan"], [23, "Guiguinto", "Bulacan"], [24, "Malolos", "Bulacan"], [29, "Calumpit", "Bulacan"], [32, "Apalit", "Pampanga"], [34, "San Simon", "Pampanga"], [35, "Minalin", "Pampanga"], [36, "Sto. Tomas", "Pampanga"], [38, "San Fernando", "Pampanga"], [41, "Angeles", "Pampanga"], [44, "Mabalacat", "Pampanga"], [50, "Bamban", "Tarlac"], [52, "Capas", "Tarlac"], [57, "Tarlac City", "Tarlac"], [59, "Gerona", "Tarlac"], [60, "Pura", "Tarlac"], [61, "Guimba", "Nueva Ecija"], [62, "Sto. Domingo", "Nueva Ecija"], [63, "Muñoz", "Nueva Ecija"], [64, "San José City", "Nueva Ecija"], [68, "Carranglan", "Nueva Ecija"], [80, "Santa Fe", "Nueva Vizcaya"], [84, "Aritao", "Nueva Vizcaya"], [88, "Dupax del Sur", "Nueva Vizcaya"], [89, "Bambang", "Nueva Vizcaya"], [92, "Bayombong", "Nueva Vizcaya"], [97, "Solano", "Nueva Vizcaya"], [98, "Bagabag", "Nueva Vizcaya"], [102, "Diadi", "Nueva Vizcaya"], [107, "Cordon", "Isabela"], [109, "Santiago City", "Isabela"], [113, "Echague", "Isabela"], [115, "Alicia", "Isabela"], [118, "Cauayan City", "Isabela"], [122, "Reina Mercedes", "Isabela"], [123, "Naguilian", "Isabela"], [125, "Gamu", "Isabela"], [126, "Ilagan City", "Isabela"], [135, "Tumauini", "Isabela"], [141, "Cabagan", "Isabela"], [144, "San Pablo", "Isabela"], [147, "Tuguegarao City", "Cagayan"], [153, "Peñablanca", "Cagayan"], [155, "Tuguegarao City", "Cagayan"], [159, "Iguig", "Cagayan"], [165, "Amulung", "Cagayan"], [167, "Alcala", "Cagayan"], [171, "Gattaran", "Cagayan"], [183, "Lal-lo", "Cagayan"], [186, "Aparri", "Cagayan"]],
-      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [59, "Gerona–Pura–Guimba Road"], [63, "Daang Maharlika"], [146, "Cagayan Valley Road"]],
-      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 48.704}, {"anchor": 40, "km": 86.434}], fareShortcuts: [] },
-    { id: "cagayan-roxas-ic", kind: 'inner', origin: 'pasay', line: "cagayan", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(11, 48).concat(CAGAYAN_LINK, CAGAYAN_MAIN, ROXAS_EXT)), ends: ["Pasay", "Tabuk"], outbound: "toward Santiago / Roxas / Tabuk",
+      nlexToTabang: { bal: 21, ic: 22, spurKm: 3.3 }, fixedLegKm: {"21": 23.53},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [21, "Quezon City", "Metro Manila"], [22, "Guiguinto", "Bulacan"], [23, "Malolos", "Bulacan"], [28, "Calumpit", "Bulacan"], [31, "Apalit", "Pampanga"], [33, "San Simon", "Pampanga"], [34, "Minalin", "Pampanga"], [35, "Sto. Tomas", "Pampanga"], [37, "San Fernando", "Pampanga"], [40, "Angeles", "Pampanga"], [43, "Mabalacat", "Pampanga"], [49, "Bamban", "Tarlac"], [51, "Capas", "Tarlac"], [56, "Tarlac City", "Tarlac"], [58, "Gerona", "Tarlac"], [59, "Pura", "Tarlac"], [60, "Guimba", "Nueva Ecija"], [61, "Sto. Domingo", "Nueva Ecija"], [62, "Muñoz", "Nueva Ecija"], [63, "San José City", "Nueva Ecija"], [67, "Carranglan", "Nueva Ecija"], [79, "Santa Fe", "Nueva Vizcaya"], [83, "Aritao", "Nueva Vizcaya"], [87, "Dupax del Sur", "Nueva Vizcaya"], [88, "Bambang", "Nueva Vizcaya"], [91, "Bayombong", "Nueva Vizcaya"], [96, "Solano", "Nueva Vizcaya"], [97, "Bagabag", "Nueva Vizcaya"], [101, "Diadi", "Nueva Vizcaya"], [106, "Cordon", "Isabela"], [108, "Santiago City", "Isabela"], [112, "Echague", "Isabela"], [114, "Alicia", "Isabela"], [117, "Cauayan City", "Isabela"], [121, "Reina Mercedes", "Isabela"], [122, "Naguilian", "Isabela"], [124, "Gamu", "Isabela"], [125, "Ilagan City", "Isabela"], [134, "Tumauini", "Isabela"], [140, "Cabagan", "Isabela"], [143, "San Pablo", "Isabela"], [146, "Tuguegarao City", "Cagayan"], [152, "Peñablanca", "Cagayan"], [154, "Tuguegarao City", "Cagayan"], [158, "Iguig", "Cagayan"], [164, "Amulung", "Cagayan"], [166, "Alcala", "Cagayan"], [170, "Gattaran", "Cagayan"], [182, "Lal-lo", "Cagayan"], [185, "Aparri", "Cagayan"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [58, "Gerona–Pura–Guimba Road"], [62, "Daang Maharlika"], [145, "Cagayan Valley Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 50.329}, {"anchor": 39, "km": 87.609}], fareShortcuts: [] },
+    { id: "cagayan-roxas-ic", kind: 'inner', origin: 'pasay', line: "cagayan", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(12, 48).concat(CAGAYAN_LINK, CAGAYAN_MAIN, ROXAS_EXT)), ends: ["Pasay", "Tabuk"], outbound: "toward Santiago / Roxas / Tabuk",
       busIdOffset: 34000, seedSalt: 144324, peakBuses: 36,
-      nlexToTabang: { bal: 21, tabang: 23 }, fixedLegKm: {"21": 23.33, "22": 3.56},
-      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Balagtas", "Bulacan"], [23, "Guiguinto", "Bulacan"], [24, "Malolos", "Bulacan"], [29, "Calumpit", "Bulacan"], [32, "Apalit", "Pampanga"], [34, "San Simon", "Pampanga"], [35, "Minalin", "Pampanga"], [36, "Sto. Tomas", "Pampanga"], [38, "San Fernando", "Pampanga"], [41, "Angeles", "Pampanga"], [44, "Mabalacat", "Pampanga"], [50, "Bamban", "Tarlac"], [52, "Capas", "Tarlac"], [57, "Tarlac City", "Tarlac"], [59, "Gerona", "Tarlac"], [60, "Pura", "Tarlac"], [61, "Guimba", "Nueva Ecija"], [62, "Sto. Domingo", "Nueva Ecija"], [63, "Muñoz", "Nueva Ecija"], [64, "San José City", "Nueva Ecija"], [68, "Carranglan", "Nueva Ecija"], [80, "Santa Fe", "Nueva Vizcaya"], [84, "Aritao", "Nueva Vizcaya"], [88, "Dupax del Sur", "Nueva Vizcaya"], [89, "Bambang", "Nueva Vizcaya"], [92, "Bayombong", "Nueva Vizcaya"], [97, "Solano", "Nueva Vizcaya"], [98, "Bagabag", "Nueva Vizcaya"], [102, "Diadi", "Nueva Vizcaya"], [107, "Cordon", "Isabela"], [109, "Santiago City", "Isabela"], [112, "San Mateo", "Isabela"], [113, "Cabatuan", "Isabela"], [115, "Aurora", "Isabela"], [116, "San Manuel", "Isabela"], [118, "Roxas", "Isabela"], [121, "Mallig", "Isabela"], [123, "Quezon", "Isabela"], [124, "Tabuk City", "Kalinga"]],
-      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [59, "Gerona–Pura–Guimba Road"], [63, "Daang Maharlika"], [110, "Santiago–Tuguegarao Road"], [123, "Nambaran–Isabela Road"], [125, "Kalinga–Cagayan Road"]],
-      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 48.704}, {"anchor": 40, "km": 86.434}], fareShortcuts: [] },
-    { id: "cagayan-tuao-ic", kind: 'inner', origin: 'pasay', line: "cagayan", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(11, 48).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, TUAO_EXT)), ends: ["Pasay", "Tuao"], outbound: "toward Santiago / Tuguegarao / Tuao",
+      nlexToTabang: { bal: 21, ic: 22, spurKm: 3.3 }, fixedLegKm: {"21": 23.53},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [21, "Quezon City", "Metro Manila"], [22, "Guiguinto", "Bulacan"], [23, "Malolos", "Bulacan"], [28, "Calumpit", "Bulacan"], [31, "Apalit", "Pampanga"], [33, "San Simon", "Pampanga"], [34, "Minalin", "Pampanga"], [35, "Sto. Tomas", "Pampanga"], [37, "San Fernando", "Pampanga"], [40, "Angeles", "Pampanga"], [43, "Mabalacat", "Pampanga"], [49, "Bamban", "Tarlac"], [51, "Capas", "Tarlac"], [56, "Tarlac City", "Tarlac"], [58, "Gerona", "Tarlac"], [59, "Pura", "Tarlac"], [60, "Guimba", "Nueva Ecija"], [61, "Sto. Domingo", "Nueva Ecija"], [62, "Muñoz", "Nueva Ecija"], [63, "San José City", "Nueva Ecija"], [67, "Carranglan", "Nueva Ecija"], [79, "Santa Fe", "Nueva Vizcaya"], [83, "Aritao", "Nueva Vizcaya"], [87, "Dupax del Sur", "Nueva Vizcaya"], [88, "Bambang", "Nueva Vizcaya"], [91, "Bayombong", "Nueva Vizcaya"], [96, "Solano", "Nueva Vizcaya"], [97, "Bagabag", "Nueva Vizcaya"], [101, "Diadi", "Nueva Vizcaya"], [106, "Cordon", "Isabela"], [108, "Santiago City", "Isabela"], [111, "San Mateo", "Isabela"], [112, "Cabatuan", "Isabela"], [114, "Aurora", "Isabela"], [115, "San Manuel", "Isabela"], [117, "Roxas", "Isabela"], [120, "Mallig", "Isabela"], [122, "Quezon", "Isabela"], [123, "Tabuk City", "Kalinga"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [58, "Gerona–Pura–Guimba Road"], [62, "Daang Maharlika"], [109, "Santiago–Tuguegarao Road"], [122, "Nambaran–Isabela Road"], [124, "Kalinga–Cagayan Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 50.329}, {"anchor": 39, "km": 87.609}], fareShortcuts: [] },
+    { id: "cagayan-tuao-ic", kind: 'inner', origin: 'pasay', line: "cagayan", anchors: METRO_ANCHORS.concat([TABANG_IC], PANGASINAN_BASE.slice(12, 48).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, TUAO_EXT)), ends: ["Pasay", "Tuao"], outbound: "toward Santiago / Tuguegarao / Tuao",
       busIdOffset: 35000, seedSalt: 152243, peakBuses: 24,
-      nlexToTabang: { bal: 21, tabang: 23 }, fixedLegKm: {"21": 23.33, "22": 3.56},
-      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Balagtas", "Bulacan"], [23, "Guiguinto", "Bulacan"], [24, "Malolos", "Bulacan"], [29, "Calumpit", "Bulacan"], [32, "Apalit", "Pampanga"], [34, "San Simon", "Pampanga"], [35, "Minalin", "Pampanga"], [36, "Sto. Tomas", "Pampanga"], [38, "San Fernando", "Pampanga"], [41, "Angeles", "Pampanga"], [44, "Mabalacat", "Pampanga"], [50, "Bamban", "Tarlac"], [52, "Capas", "Tarlac"], [57, "Tarlac City", "Tarlac"], [59, "Gerona", "Tarlac"], [60, "Pura", "Tarlac"], [61, "Guimba", "Nueva Ecija"], [62, "Sto. Domingo", "Nueva Ecija"], [63, "Muñoz", "Nueva Ecija"], [64, "San José City", "Nueva Ecija"], [68, "Carranglan", "Nueva Ecija"], [80, "Santa Fe", "Nueva Vizcaya"], [84, "Aritao", "Nueva Vizcaya"], [88, "Dupax del Sur", "Nueva Vizcaya"], [89, "Bambang", "Nueva Vizcaya"], [92, "Bayombong", "Nueva Vizcaya"], [97, "Solano", "Nueva Vizcaya"], [98, "Bagabag", "Nueva Vizcaya"], [102, "Diadi", "Nueva Vizcaya"], [107, "Cordon", "Isabela"], [109, "Santiago City", "Isabela"], [113, "Echague", "Isabela"], [115, "Alicia", "Isabela"], [118, "Cauayan City", "Isabela"], [122, "Reina Mercedes", "Isabela"], [123, "Naguilian", "Isabela"], [125, "Gamu", "Isabela"], [126, "Ilagan City", "Isabela"], [135, "Tumauini", "Isabela"], [141, "Cabagan", "Isabela"], [144, "San Pablo", "Isabela"], [147, "Tuguegarao City", "Cagayan"], [153, "Solana", "Cagayan"], [158, "Piat", "Cagayan"], [160, "Tuao", "Cagayan"]],
-      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [59, "Gerona–Pura–Guimba Road"], [63, "Daang Maharlika"], [146, "Cagayan Valley Road"], [152, "Cagayan–Apayao Road"]],
-      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 48.704}, {"anchor": 40, "km": 86.434}], fareShortcuts: [] }
+      nlexToTabang: { bal: 21, ic: 22, spurKm: 3.3 }, fixedLegKm: {"21": 23.53},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [21, "Quezon City", "Metro Manila"], [22, "Guiguinto", "Bulacan"], [23, "Malolos", "Bulacan"], [28, "Calumpit", "Bulacan"], [31, "Apalit", "Pampanga"], [33, "San Simon", "Pampanga"], [34, "Minalin", "Pampanga"], [35, "Sto. Tomas", "Pampanga"], [37, "San Fernando", "Pampanga"], [40, "Angeles", "Pampanga"], [43, "Mabalacat", "Pampanga"], [49, "Bamban", "Tarlac"], [51, "Capas", "Tarlac"], [56, "Tarlac City", "Tarlac"], [58, "Gerona", "Tarlac"], [59, "Pura", "Tarlac"], [60, "Guimba", "Nueva Ecija"], [61, "Sto. Domingo", "Nueva Ecija"], [62, "Muñoz", "Nueva Ecija"], [63, "San José City", "Nueva Ecija"], [67, "Carranglan", "Nueva Ecija"], [79, "Santa Fe", "Nueva Vizcaya"], [83, "Aritao", "Nueva Vizcaya"], [87, "Dupax del Sur", "Nueva Vizcaya"], [88, "Bambang", "Nueva Vizcaya"], [91, "Bayombong", "Nueva Vizcaya"], [96, "Solano", "Nueva Vizcaya"], [97, "Bagabag", "Nueva Vizcaya"], [101, "Diadi", "Nueva Vizcaya"], [106, "Cordon", "Isabela"], [108, "Santiago City", "Isabela"], [112, "Echague", "Isabela"], [114, "Alicia", "Isabela"], [117, "Cauayan City", "Isabela"], [121, "Reina Mercedes", "Isabela"], [122, "Naguilian", "Isabela"], [124, "Gamu", "Isabela"], [125, "Ilagan City", "Isabela"], [134, "Tumauini", "Isabela"], [140, "Cabagan", "Isabela"], [143, "San Pablo", "Isabela"], [146, "Tuguegarao City", "Cagayan"], [152, "Solana", "Cagayan"], [157, "Piat", "Cagayan"], [159, "Tuao", "Cagayan"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [22, "Tabang Spur Road (E1)"], [23, "MacArthur Highway"], [58, "Gerona–Pura–Guimba Road"], [62, "Daang Maharlika"], [145, "Cagayan Valley Road"], [151, "Cagayan–Apayao Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 23, "km": 50.329}, {"anchor": 39, "km": 87.609}], fareShortcuts: [] }
   ];
 
   function makeRoute(def) {
@@ -2708,7 +2708,10 @@
       if (e.zone2) route.zones.push({ from: route.anchorKm(e.zone2.from), to: route.anchorKm(e.zone2.to), stops: [], name: e.zone2.label, road: e.zone2.label.split(' (')[0], kind: 'sctex' });
     }
     if (def.nlexToTabang) {
-      const kBal = route.anchorKm(def.nlexToTabang.bal), kTab = route.anchorKm(def.nlexToTabang.tabang);
+      const n = def.nlexToTabang;
+      const kBal = route.anchorKm(n.bal);
+      // Tabang stop = end of the spur at the Guiguinto interchange (spurKm along the leg from the spur waypoint)
+      const kTab = n.spurKm !== undefined ? Math.min(route.anchorKm(n.ic) + n.spurKm, route.anchorKm(n.ic + 1) - 0.1) : route.anchorKm(n.tabang);
       route.exStartKm = kBal;
       route.tabangKm = kTab;
       route.exits = NLEX_EXITS.filter(x => x.post < TABANG_POST).map(x => Object.assign({}, x, { km: kBal + (kTab - kBal) * (x.post - NLEX_BAL_POST) / (TABANG_POST + 3.56 - NLEX_BAL_POST) }));
@@ -3030,6 +3033,54 @@
     return fixed.size;
   }
 
+  /* Side trips to off-highway waypoints: some DPWH bridges are on old roads beside the highway, and the router leaves
+     the highway to touch them (e.g. Dakila Br in Malolos). If the path through a waypoint is clearly longer than the
+     straight gap, ask once for the road WITHOUT it; if that road is shorter and passes >100 m from the waypoint,
+     draw that road instead. Real curves are kept (the road without the waypoint still passes right by it). */
+  const detourCheckedKeys = new Set();
+  async function removeWaypointDetours(route, legs, source) {
+    const A = route.anchors;
+    let changed = 0;
+    // pick up legs already straightened for another service that shares them
+    for (let k = 0; k < legs.length; k++) {
+      const hit = snappedLegCache.get(legKey(A[k], A[k + 1]));
+      if (hit && hit !== legs[k]) { legs[k] = hit; source[k] = 'road'; changed++; }
+    }
+    for (let i = 1; i < A.length - 1; i++) {
+      if (source[i - 1] !== 'road' || source[i] !== 'road') continue;
+      if (A[i][2] === 'winding' || A[i + 1][2] === 'winding') continue;
+      const key = legKey(A[i - 1], A[i]) + '|' + A[i + 1][0] + ',' + A[i + 1][1];
+      if (detourCheckedKeys.has(key)) continue;
+      const through = polylineKm(legs[i - 1]) + polylineKm(legs[i]);
+      const direct = haversineKm(A[i - 1], A[i + 1]);
+      if (direct > 8 || through < direct * 1.06 + 0.25) continue; // expressway-scale gap, or no sign of a side trip
+      detourCheckedKeys.add(key);
+      try {
+        const osrmLegs = await osrmRouteChunk([A[i - 1], A[i + 1]], false);
+        const full = [];
+        osrmLegs.forEach(leg => leg.steps.forEach(step => step.geometry.coordinates.forEach(c => {
+          const prev = full[full.length - 1];
+          if (!prev || prev[0] !== c[0] || prev[1] !== c[1]) full.push(c);
+        })));
+        if (full.length >= 2) {
+          const near = nearestOnPolyline(A[i].slice(0, 2), full);
+          const saved = through - polylineKm(full);
+          if (saved > 0.2 && near.km < 1.5 && (near.km > 0.1 || saved > 0.4)) { // shorter without it, and it really was off the road
+            const legA = [A[i - 1].slice(0, 2)].concat(full.slice(1, near.index), [near.point]);
+            const legB = [near.point].concat(full.slice(near.index, full.length - 1), [A[i + 1].slice(0, 2)]);
+            legs[i - 1] = legA; legs[i] = legB;
+            snappedLegCache.set(legKey(A[i - 1], A[i]), legA);
+            snappedLegCache.set(legKey(A[i], A[i + 1]), legB);
+            changed++;
+            console.log(route.id + ': straightened a side trip to waypoint ' + i + ' (' + (through - polylineKm(full)).toFixed(1) + ' km shorter).');
+          }
+        }
+      } catch (err) { /* keep as is */ }
+      await sleep(1100);
+    }
+    return changed;
+  }
+
   /* Road shapes are cached so the routing service is only asked once:
      1. road-shapes.json next to index.html (export it once with Dev Mode → "Download road shapes") — instant for everyone;
      2. this browser's localStorage — instant on every visit after the first. */
@@ -3039,6 +3090,7 @@
     let n = 0;
     Object.entries(data.legs).forEach(([k, g]) => { if (Array.isArray(g) && g.length > 1 && !snappedLegCache.has(k)) { snappedLegCache.set(k, g); n++; } });
     Object.entries(data.noShape || {}).forEach(([k]) => { if (!snappedLegCache.has(k)) spanResnapCache.set(k, null); });
+    (data.detourChecked || []).forEach(k => detourCheckedKeys.add(k));
     return n;
   }
   function roadShapesSnapshot() {
@@ -3046,7 +3098,7 @@
     const round = g => g.map(c => [Math.round(c[0] * 1e5) / 1e5, Math.round(c[1] * 1e5) / 1e5]);
     snappedLegCache.forEach((g, k) => { legs[k] = round(g); });
     spanResnapCache.forEach((g, k) => { if (g === null && !legs[k]) noShape[k] = 1; });
-    return { version: 1, savedAt: new Date().toISOString(), legs, noShape };
+    return { version: 1, savedAt: new Date().toISOString(), legs, noShape, detourChecked: [...detourCheckedKeys] };
   }
   let saveShapesTimer = null;
   function saveRoadShapesSoon() {
@@ -3083,13 +3135,14 @@
       } else pending.push(route);
     });
     if (!SNAP_ROUTE_TO_ROADS) return;
-    const retrace = [];
+    const retrace = [], drawn = [];
     for (const route of pending) { // one service at a time; later services reuse shared legs
       try {
         const res = await fetchSnappedLegs(route);
         applySnappedRoute(route, res.legs, res.source);
         saveRoadShapesSoon();
         console.log(route.id + ' snapping: ' + res.source.filter(x => x === 'road').length + '/' + res.legs.length + ' legs follow OSRM road geometry.');
+        drawn.push({ route, res });
         if (res.rejectedIdx.length) retrace.push({ route, res });
       } catch (err) { console.warn(route.id + ' snapping skipped; straight on-road legs in use.', err); }
     }
@@ -3101,6 +3154,13 @@
         if (res.rejected.length) console.log(route.id + ' snapping still rejected:\n  ' + res.rejected.join('\n  '));
       } catch (err) { console.warn(route.id + ' re-trace skipped.', err); }
     }
+    // Background pass: straighten side trips to off-highway waypoints.
+    for (const { route, res } of drawn) {
+      try {
+        if (await removeWaypointDetours(route, res.legs, res.source)) { applySnappedRoute(route, res.legs, res.source); saveRoadShapesSoon(); }
+      } catch (err) { console.warn(route.id + ' detour check skipped.', err); }
+    }
+    saveRoadShapesSoon();
   }
 
   // Console helpers: debugRoute('pangasinan'), copy(exportRoute('zambales'))
