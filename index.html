@@ -120,6 +120,9 @@
   .bus-marker.line-pangasinan svg path { stroke: #3D2B00; }
   .bus-marker.line-pangasinan svg circle { fill: #3D2B00; }
   .bus-marker.line-pangasinan.tracked::after { background: rgba(242, 183, 5, 0.45); }
+  .bus-marker.line-zambales.tracked::after { background: rgba(242, 140, 40, 0.45); }
+  .bus-marker.line-baguio.tracked::after { background: rgba(43, 170, 78, 0.42); }
+  .bus-marker.line-cagayan.tracked::after { background: rgba(232, 65, 44, 0.42); }
   .line-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
   .booking-marker {
     width: 12px; height: 12px; border-radius: 2px; background: #FFFFFF;
@@ -170,7 +173,7 @@
     top: max(16px, env(safe-area-inset-top));
     left: 50%;
     transform: translateX(-50%);
-    width: calc(100% - 48px);
+    width: calc(100% - 32px); /* 16px edges, same as the weather card and bottom controls */
     max-width: 900px;
     z-index: 20;
     display: flex; align-items: center; justify-content: space-between;
@@ -200,36 +203,24 @@
   .mode-pill {
     background: var(--dev-pill-bg);
     color: var(--dev-pill-text);
-    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.5; font-family: inherit;
     padding: 2px 7px; border-radius: var(--radius-pill);
-    margin-left: 2px;
+    margin-left: 2px; border: none; cursor: pointer; position: relative;
+    transition: background 0.2s ease, color 0.2s ease;
   }
+  .mode-pill::before { content: ""; position: absolute; inset: -12px -8px; } /* bigger tap target than the small badge */
+  .mode-pill:active { transform: scale(0.95); }
+  .mode-pill.on { background: #FF9500; color: #FFFFFF; }
+  @media (hover: hover) {
+    .mode-pill:hover { background: #DCDCE1; }
+    .mode-pill.on:hover { background: #F08A00; }
+  }
+  .mode-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .dev-toggle {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--surface-translucent);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    padding: 8px 12px; border-radius: var(--radius-pill);
-    box-shadow: var(--shadow-float);
-    font-size: 13px; color: var(--text-secondary);
-  }
 
-  .switch {
-    position: relative; width: 40px; height: 24px;
-    border-radius: var(--radius-pill);
-    background: #E5E5EA;
-    cursor: pointer; transition: background 0.2s ease;
-    border: none; padding: 0; flex-shrink: 0;
-  }
-  .switch::after {
-    content: ""; position: absolute; top: 2px; left: 2px;
-    width: 20px; height: 20px; border-radius: 50%;
-    background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-    transition: transform 0.2s ease;
-  }
-  .switch.on { background: #34C759; }
-  .switch.on::after { transform: translateX(16px); }
+
+
+
 
   /* ---------- WEATHER / TIME CAPSULE ---------- */
   .weather-capsule {
@@ -328,6 +319,16 @@
   .board-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
   .board-btn:active { background: #EEF4FF; }
   @media (max-width: 360px) { .board-btn span { display: none; } }
+  .sheet-btn-row { display: flex; gap: 8px; margin: -2px 0 12px; }
+  .sheet-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 8px;
+    border: 1.5px solid rgba(0, 122, 255, 0.35); border-radius: var(--radius-pill); background: #FFFFFF;
+    color: var(--accent); font: 600 14px/1 inherit; font-family: inherit; cursor: pointer; white-space: nowrap;
+  }
+  .sheet-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+  .sheet-btn.active { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+  .bus-sheet-board-info { background: rgba(0, 122, 255, 0.06); border-radius: 14px; padding: 10px 12px 4px; margin: -4px 0 12px; }
+  .bus-sheet-board-info .board-row:first-of-type { border-top: none; }
   .board-place { font-size: 16px; font-weight: 600; line-height: 1.35; margin: -4px 0 10px; }
   .board-row { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; padding: 8px 0; border-top: 1px solid rgba(60, 60, 67, 0.12); }
   .board-row b { font-weight: 600; }
@@ -384,6 +385,15 @@
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .pin-btn svg { width: 18px; height: 18px; }
+  .clear-btn {
+    background: none; border: none; padding: 4px; margin-right: -6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .clear-btn svg { width: 18px; height: 18px; }
+  .clear-btn.hidden { display: none; }
+  /* While a bus (or trip) is tracked, only the compact ETA card stays in the bottom stack */
+  body.tracking-active .bottom-stack .bottom-bar,
+  body.tracking-active .bottom-stack .find-bus-btn { display: none; }
 
   .autocomplete-list {
     position: absolute;
@@ -1075,7 +1085,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .user-marker::after, .bus-marker.tracked::after, .typing-dots i, .busboy-status.checking { animation: none; }
-    .chat-sheet, .chat-overlay, .switch, .switch::after { transition: none; }
+    .chat-sheet, .chat-overlay, .mode-pill { transition: none; }
   }
 </style>
 </head>
@@ -1092,12 +1102,7 @@
     <div class="brand">
       <img class="brand-logo" src="data:image/webp;base64,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" width="38" height="38" alt="">
       <span class="brand-name">BusHop</span>
-      <span class="mode-pill" id="modePill">DEMO</span>
-    </div>
-
-    <div class="dev-toggle">
-      <span>Dev Mode</span>
-      <button class="switch" id="devSwitch" aria-label="Toggle developer mode"></button>
+      <button class="mode-pill" id="devSwitch" type="button" aria-pressed="false" title="Tap to switch to Dev Mode" aria-label="Demo mode. Tap to switch to Dev Mode">DEMO</button>
     </div>
   </header>
 
@@ -1161,6 +1166,9 @@
         <div class="field">
           <span class="field-dot origin"></span>
           <input type="text" placeholder="Your location" id="locationInput" autocomplete="off" aria-label="Your location">
+          <button class="clear-btn hidden" id="clearOriginBtn" aria-label="Clear your location" type="button">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" fill="#8E8E93" opacity="0.28"/><path d="M9 9l6 6M15 9l-6 6" stroke="#636366" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
           <button class="pin-btn" id="pinButton" aria-label="Pin your location on the map" type="button">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7-6.1-7-11.2C5 6 8.1 3 12 3s7 3 7 6.8C19 14.9 12 21 12 21z" stroke="#007AFF" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.3" stroke="#007AFF" stroke-width="1.7"/></svg>
           </button>
@@ -1168,6 +1176,9 @@
         <div class="field">
           <span class="field-dot dest"></span>
           <input type="text" placeholder="Where to?" id="destinationInput" autocomplete="off" aria-label="Destination">
+          <button class="clear-btn hidden" id="clearDestBtn" aria-label="Clear destination" type="button">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" fill="#8E8E93" opacity="0.28"/><path d="M9 9l6 6M15 9l-6 6" stroke="#636366" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
           <button class="pin-btn" id="pinButtonDest" aria-label="Pin your destination on the map" type="button">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7-6.1-7-11.2C5 6 8.1 3 12 3s7 3 7 6.8C19 14.9 12 21 12 21z" stroke="#007AFF" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.3" stroke="#007AFF" stroke-width="1.7"/></svg>
           </button>
@@ -1177,28 +1188,10 @@
     </div>
 
     <!-- Fix #4: chat is no longer squeezed into the search row -->
-    <div class="action-row">
-      <button class="find-bus-btn" id="findBusBtn" type="button">Find My Bus</button>
-      <button class="board-btn" id="boardBtn" type="button" aria-label="Nearest boarding point">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 21V4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="7" y="3.5" width="11" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8"/><path d="M10 7h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4.5 21h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <span>Boarding point</span>
-      </button>
-    </div>
+    <button class="find-bus-btn" id="findBusBtn" type="button">Find My Bus</button>
   </div>
 
-  <!-- Nearest boarding point -->
-  <div class="bus-options-overlay" id="boardOverlay">
-    <div class="bus-options-sheet">
-      <div class="bus-sheet-handle"></div>
-      <div class="bus-options-title">Nearest boarding point</div>
-      <div id="boardBody"></div>
-      <div class="board-actions">
-        <button class="btn-primary board-find" id="boardFindBus" type="button">Find My Bus</button>
-        <button class="cancel-pill board-done" id="boardDone" type="button">Done</button>
-      </div>
-    </div>
-  </div>
-
+  <!-- (the boarding point now lives in the tracking card) -->
   <!-- Fix #4: BusBoy launch is its own floating button, dynamically kept
        clear of the bottom-stack above via ResizeObserver (see script). -->
   <button class="chat-launch" id="chatLaunchBtn" aria-label="Open BusBoy chat">
@@ -1290,7 +1283,17 @@
 
       <!-- Fix #6: Track and Guide now diverge visibly — this link only
            appears until directions are actually requested. -->
-      <button class="link-btn" id="busSheetGetDirections" type="button">Get directions to this bus →</button>
+      <div class="sheet-btn-row" id="busSheetButtonRow">
+        <button class="sheet-btn" id="busSheetGetDirections" type="button">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7.5 18-7.5-4-7.5 4L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <span>Get directions</span>
+        </button>
+        <button class="sheet-btn" id="busSheetBoardPoint" type="button">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 21V4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="7" y="3.5" width="11" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8"/><path d="M10 7h5M4.5 21h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>Boarding point</span>
+        </button>
+      </div>
+      <div class="bus-sheet-board-info hidden" id="busSheetBoardInfo"></div>
 
       <div class="bus-sheet-directions-section hidden" id="busSheetDirectionsSection">
         <div class="bus-sheet-mode-picker">
@@ -1471,7 +1474,7 @@
      DEV MODE
      ========================================================= */
   const devSwitch = document.getElementById('devSwitch');
-  const modePill = document.getElementById('modePill');
+  const modePill = devSwitch; // the DEMO / DEV badge is the Dev Mode switch
   const devControls = document.getElementById('devControls');
   const devTempInput = document.getElementById('devTempInput');
   const devConditionInput = document.getElementById('devConditionInput');
@@ -1562,6 +1565,9 @@
     const isOn = devSwitch.classList.toggle('on');
     if (isOn) snapshotLiveState(); // remember the real app state before simulating anything
     modePill.textContent = isOn ? 'DEV' : 'DEMO';
+    modePill.setAttribute('aria-pressed', String(isOn));
+    modePill.title = isOn ? 'Tap to go back to live' : 'Tap to switch to Dev Mode';
+    modePill.setAttribute('aria-label', isOn ? 'Dev Mode on. Tap to go back to live' : 'Demo mode. Tap to switch to Dev Mode');
     devControls.classList.toggle('visible', isOn);
     // Dev clock always starts from the real present at 1x, so turning
     // Dev Mode on never makes buses jump; turning it off returns to live.
@@ -1723,6 +1729,7 @@
     { name: 'Tabuk Booking Office', note: 'Tabuk City, Kalinga · Roxas–Tabuk terminus (approx.)', coord: [121.44000, 17.41000], type: 'booking' },
     { name: 'Tuao Booking Office', note: 'Tuao, Cagayan · terminus (approx.)', coord: [121.45500, 17.73800], type: 'booking' },
     { name: 'Aparri Booking Office', note: 'Aparri, Cagayan · Cagayan Valley Line terminus (approx.)', coord: [121.63900, 18.35700], type: 'booking' },
+    { name: 'Urdaneta Terminal', note: 'MacArthur Hwy., Urdaneta City (approx.)', coord: [120.57077, 15.97628], type: 'terminal' },
     { name: 'Lubao Bus Stopover', note: 'Lubao, Pampanga (approx.)', coord: [120.59110, 14.93523], type: 'stopover' },
     { name: 'Dau Bus Stopover', note: 'Mabalacat, Pampanga (approx.)', coord: [120.58818, 15.17373], type: 'stopover' },
     { name: 'Motorway Bus Stopover', note: 'Tarlac City (approx.)', coord: [120.59757, 15.44617], type: 'stopover' },
@@ -2970,6 +2977,7 @@
   }
 
   function tick() {
+    syncClearButtons();
     if (fleet.length === 0) return;
     maybeRegenerateFleet();
     positionFleet();
@@ -3119,15 +3127,22 @@
   }
 
   function expandDirections() {
-    busSheetGetDirectionsBtn.classList.add('hidden');
+    busSheetGetDirectionsBtn.classList.add('active');
     busSheetDirectionsSection.classList.remove('hidden');
   }
 
   function collapseDirections() {
-    busSheetGetDirectionsBtn.classList.remove('hidden');
+    busSheetGetDirectionsBtn.classList.remove('active');
     busSheetDirectionsSection.classList.add('hidden');
   }
 
+  // Search bar + Find My Bus only while nothing is tracked.
+  function syncTrackingUI() {
+    const tracking = trackedBusId !== null;
+    document.body.classList.toggle('tracking-active', tracking);
+    if (tracking) autocompleteList.classList.add('hidden');
+    if (typeof updateChatLaunchPosition === 'function') updateChatLaunchPosition();
+  }
   function openBusSheet(bus, opts) {
     opts = opts || {};
     if (!opts.keepTrip && trackedTrip) clearTripState(); // tracking a single bus instead of the trip
@@ -3137,6 +3152,7 @@
     busSheetDirection.textContent = bus.route.name + ' · ' + bus.route.dirText(bus.direction);
     busSheetEtaValue.textContent = originCoord ? 'Calculating…' : 'Set your location for an ETA';
     if (isNewBus) {
+      if (!opts.keepBoarding) clearBoardingPoint();
       busSheetGuideInfo.classList.add('hidden');
       clearGuideRoute();
       collapseDirections();
@@ -3147,9 +3163,11 @@
     updateRideToggleVisibility();
     ecTrackBtn.textContent = trackedTrip ? '▲ View Trip' : '▲ View Tracked Bus';
     if (!opts.keepClosed) busSheetOverlay.classList.add('open');
+    syncTrackingUI();
   }
 
   function updateBusSheetLive(multiplier) {
+    refreshBoardingInfo();
     if (trackedTrip) { updateTripSheet(multiplier); return; }
     const bus = fleet.find(b => b.id === trackedBusId);
     if (!bus) { stopTracking(); return; } // fleet regenerated, bus no longer exists
@@ -3222,6 +3240,7 @@
   // Stop Tracking: the real cancel. Clears the tracked bus and any
   // drawn guide route, and hands the eta-card back to auto mode.
   function stopTracking() {
+    clearBoardingPoint();
     trackedBusId = null;
     busSheetOverlay.classList.remove('open');
     clearGuideRoute();
@@ -3229,6 +3248,7 @@
     clearTripState();
     setTrackedMarkerVisual(null);
     ecTrackBtn.textContent = 'Track this Bus';
+    syncTrackingUI();
   }
 
   document.getElementById('busSheetClose').addEventListener('click', minimizeBusSheet);
@@ -3522,7 +3542,8 @@
       clearGuideRoute();
       busSheetGuideInfo.classList.add('hidden');
       collapseDirections();
-      busSheetGetDirectionsBtn.classList.add('hidden');
+      document.getElementById('busSheetButtonRow').classList.add('hidden'); // on board: no walking directions / boarding point
+      clearBoardingPoint();
 
       const busPt = bus.route.pointAt(bus.distanceKm);
       if (!originMarker) {
@@ -3545,7 +3566,7 @@
       if (originMarker) originMarker.setOffset([0, 0]);
       if (originCoord) locationInput.value = 'Current Location (simulated)';
       busSheetEtaLabel.textContent = 'Estimated arrival';
-      busSheetGetDirectionsBtn.classList.remove('hidden');
+      document.getElementById('busSheetButtonRow').classList.remove('hidden');
       rideTarget = null; rideStats = null;
     }
   }
@@ -3988,6 +4009,7 @@
     if (trip.boardedSimMs === null) trip.boardedSimMs = stats.startSimMs;
     const arrivedMs = stats.arrivalSimMs;
     toggleRiding(); // off this bus
+    clearBoardingPoint();
     const stopPt = leg.route.pointAt(leg.toKm);
     originCoord = stopPt;
     if (originMarker) originMarker.setLngLat(stopPt).setOffset([0, 0]);
@@ -4132,66 +4154,75 @@
      there, which lines stop, and the next buses. If a destination is set,
      it's the boarding point for that trip's first bus.
      ========================================================= */
-  const boardOverlay = document.getElementById('boardOverlay');
-  const boardBody = document.getElementById('boardBody');
-  var boardMarker = null, boardRequestSeq = 0; // var: setOrigin() may clear these before this line runs
+  const boardInfoEl = document.getElementById('busSheetBoardInfo');
+  const boardBtn = document.getElementById('busSheetBoardPoint');
+  var boardMarker = null, boardRequestSeq = 0, boardState = null; // var: setOrigin() may clear these before this line runs
   function clearBoardingPoint() {
     boardRequestSeq++;
+    boardState = null;
     if (boardMarker) { boardMarker.remove(); boardMarker = null; }
     if (map.getLayer('board-walk-line')) map.removeLayer('board-walk-line');
     if (map.getSource('board-walk')) map.removeSource('board-walk');
+    if (boardInfoEl) { boardInfoEl.classList.add('hidden'); boardInfoEl.innerHTML = ''; }
+    if (boardBtn) boardBtn.classList.remove('active');
   }
-  function boardingPlan() {
-    const sk = destinationCoord ? tripSkeleton(originCoord, destinationCoord) : null;
-    let routes, dir = 0, point;
-    if (sk) {
-      const leg = sk.legs[0];
+  // Where to board the tracked bus (or the current bus of a tracked trip), from `fromC`.
+  function boardingPlan(fromC) {
+    const bus = busById(trackedBusId);
+    if (!bus) return null;
+    let routes, dir = 0, point, from = fromC;
+    if (trackedTrip) {
+      const leg = trackedTrip.legs[trackedTrip.activeLeg];
       routes = legOptions(leg).map(o => o.route); dir = leg.dir; point = leg.route.pointAt(leg.fromKm);
+      if (!from) from = trackedTrip.activeLeg > 0 ? point : (trackedTrip.originC || originCoord);
     } else {
-      const rel = placeRelation(originCoord);
-      routes = rel.lines.length ? rel.lines : [rel.route]; point = rel.point.coord;
+      if (!from) return null;
+      routes = placeRelation(from).lines.filter(r => r.line === bus.route.line);
+      if (!routes.includes(bus.route)) routes = [bus.route].concat(routes);
+      point = bus.route.pointAt(bus.route.kmAt(from));
     }
-    const route = routes[0];
+    const route = routes.includes(bus.route) ? bus.route : routes[0];
     const km = route.kmAt(point);
     const where = describeRouteKm(route, km);
     const station = MAJOR_TERMINALS.filter(t => haversineKm(t.coord, point) < 1.2).sort((a, b) => haversineKm(a.coord, point) - haversineKm(b.coord, point))[0];
-    const buses = upcomingBuses(routes.map(r => ({ route: r, km: r.kmAt(point), dir })), 3);
-    return { sk, routes, dir, point, where, station, buses, straightKm: haversineKm(originCoord, point) };
+    const busEta = busArrivalMin(bus, bus.route.kmAt(point), dir, getSpeedMultiplier());
+    return { bus, routes: placeRelation(point).lines.length ? placeRelation(point).lines : routes, point, where, station, busEta, from, straightKm: haversineKm(from, point) };
   }
   function renderBoarding(plan, walk) {
     const km = walk ? walk.km : plan.straightKm * 1.3; // streets are ~30% longer than a straight line
     const mins = Math.max(1, Math.round(km / WALK_KMH * 60));
     const dist = km < 1 ? Math.round(km * 100) * 10 + ' m' : km.toFixed(1) + ' km';
-    const lines = lineNamesOf(plan.routes).map(n => lineDot(ROUTES.find(r => r.name === n)) + n).join('<br>');
-    const next = plan.buses.length
-      ? plan.buses.map((b, i) => (i ? '' : '<b>') + b.info.plate + (i ? '' : '</b>') + ' · ' + b.info.line.replace(' Line', '') + ' · ' + b.info.eta_minutes + ' min').join('<br>')
-      : 'None soon';
-    let html = '<div class="board-place">' + escapeHtml(plan.where.road + ' in ' + plan.where.town + ', ' + plan.where.province) +
-      (plan.station ? '<br><span style="font-size:13px;font-weight:500;color:var(--text-secondary)">at ' + escapeHtml(plan.station.name) + '</span>' : '') + '</div>';
-    if (plan.straightKm > 1.5) html += '<div class="board-note">' + (plan.straightKm > 3 ? 'Take a tricycle or jeep to the highway.' : 'That’s a long walk — a tricycle or jeep to the highway is easier.') + '</div>';
-    const distText = plan.straightKm < 0.05 ? '<b>You’re right at the highway</b>'
+    const lines = lineNamesOf(plan.routes).map(n => lineDot(ROUTES.find(r => r.name === n)) + n).join(' · ');
+    const distText = plan.straightKm < 0.05 ? '<b>You’re right there</b>'
       : plan.straightKm > 3 ? '<b>' + plan.straightKm.toFixed(1) + ' km</b> away · too far to walk'
       : '<b>' + dist + '</b> · ~' + formatDuration(mins) + ' walk' + (walk ? '' : ' (estimate)');
-    html += '<div class="board-row"><span class="board-k">Distance</span><span>' + distText + '</span></div>';
-    html += '<div class="board-row"><span class="board-k">Lines</span><span>' + lines + '</span></div>';
-    if (plan.sk) html += '<div class="board-row"><span class="board-k">Your trip</span><span>' + (plan.sk.legs.length > 1 ? 'First bus toward ' + escapeHtml(plan.sk.transferAt) + ', then change' : 'Direct to ' + escapeHtml(destinationInput.value)) + ' · ' + (plan.dir === 1 ? 'northbound' : 'southbound') + '</span></div>';
-    html += '<div class="board-row"><span class="board-k">Next buses</span><span>' + next + '</span></div>';
-    boardBody.innerHTML = html;
+    let html = '<div class="board-place">' + escapeHtml(plan.station ? plan.station.name : plan.where.road + ' in ' + plan.where.town) +
+      '<br><span style="font-size:12px;font-weight:500;color:var(--text-secondary)">' + escapeHtml(plan.where.road + ', ' + plan.where.town + ', ' + plan.where.province) + '</span></div>';
+    if (plan.straightKm > 1.5) html += '<div class="board-note">' + (plan.straightKm > 3 ? 'Take a tricycle or jeep to the highway.' : 'That’s a long walk — a tricycle or jeep is easier.') + '</div>';
+    html += '<div class="board-row"><span class="board-k">From you</span><span>' + distText + '</span></div>';
+    html += '<div class="board-row"><span class="board-k">This bus</span><span><b>' + escapeHtml(plan.bus.plate) + '</b> · ' +
+      (plan.busEta === null ? 'not heading there' : plan.busEta < 1 ? 'arriving now' : 'there in ' + formatDuration(Math.round(plan.busEta))) + '</span></div>';
+    html += '<div class="board-row"><span class="board-k">Lines here</span><span>' + lines + '</span></div>';
+    boardInfoEl.innerHTML = html;
+    boardInfoEl.classList.remove('hidden');
   }
-  function showBoardingPoint() {
-    if (!originCoord) {
-      boardBody.innerHTML = '<p style="text-align:center;color:var(--text-secondary);font-size:13px;padding:10px 4px;">Set your location first so I can find where to board.</p>';
-      boardOverlay.classList.add('open');
+  // Shows the boarding point inside the tracking card (and on the map). Cleared by Stop Tracking.
+  function showBoardingPoint(fromCoord) {
+    const from = fromCoord || (trackedTrip ? null : originCoord);
+    clearBoardingPoint();
+    const plan = boardingPlan(from);
+    if (!plan) {
+      boardInfoEl.innerHTML = '<div class="board-note" style="color:var(--text-secondary);padding-bottom:8px">Set your location first so I can find where to board.</div>';
+      boardInfoEl.classList.remove('hidden');
       return;
     }
-    clearBoardingPoint();
-    const plan = boardingPlan();
+    boardState = { from: plan.from, walk: null };
+    boardBtn.classList.add('active');
     renderBoarding(plan, null);
-    boardOverlay.classList.add('open');
     const el = document.createElement('div');
     el.className = 'board-marker';
     el.textContent = 'Board here';
-    el.addEventListener('click', ev => { ev.stopPropagation(); renderBoarding(boardingPlan(), null); boardOverlay.classList.add('open'); });
+    el.addEventListener('click', ev => { ev.stopPropagation(); busSheetOverlay.classList.add('open'); });
     boardMarker = new maplibregl.Marker({ element: el, anchor: 'left', offset: [-8, 0] }).setLngLat(plan.point).addTo(map);
     const drawWalk = coords => {
       const data = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
@@ -4202,31 +4233,28 @@
           paint: { 'line-color': '#007AFF', 'line-width': 4, 'line-opacity': 0.75, 'line-dasharray': [0.1, 1.8] } });
       }
     };
-    drawWalk([originCoord, plan.point]);
-    const bounds = new maplibregl.LngLatBounds(originCoord, originCoord).extend(plan.point);
-    map.fitBounds(bounds, { padding: { top: 100, bottom: 420, left: 60, right: 60 }, maxZoom: 16 });
-    // Walking route (falls back to the straight dashed line if routing is unavailable).
+    drawWalk([plan.from, plan.point]);
+    map.fitBounds(new maplibregl.LngLatBounds(plan.from, plan.from).extend(plan.point), { padding: { top: 100, bottom: 460, left: 60, right: 60 }, maxZoom: 16 });
     const seq = boardRequestSeq;
     if (plan.straightKm > 0.03 && plan.straightKm < 8) {
-      fetch('https://router.project-osrm.org/route/v1/foot/' + originCoord[0] + ',' + originCoord[1] + ';' + plan.point[0] + ',' + plan.point[1] + '?overview=full&geometries=geojson')
+      fetch('https://router.project-osrm.org/route/v1/foot/' + plan.from[0] + ',' + plan.from[1] + ';' + plan.point[0] + ',' + plan.point[1] + '?overview=full&geometries=geojson')
         .then(r => r.json()).then(data => {
           if (seq !== boardRequestSeq || data.code !== 'Ok' || !data.routes[0]) return;
-          const coords = data.routes[0].geometry.coordinates;
           const walkKm = data.routes[0].distance / 1000;
           if (walkKm > plan.straightKm * 4 + 1) return; // implausible detour: keep the estimate
-          drawWalk([originCoord].concat(coords, [plan.point]));
-          renderBoarding(plan, { km: walkKm });
+          drawWalk([plan.from].concat(data.routes[0].geometry.coordinates, [plan.point]));
+          boardState.walk = { km: walkKm };
+          renderBoarding(boardingPlan(boardState.from) || plan, boardState.walk);
         }).catch(() => {});
     }
   }
-  document.getElementById('boardBtn').addEventListener('click', showBoardingPoint);
-  document.getElementById('boardDone').addEventListener('click', () => boardOverlay.classList.remove('open'));
-  document.getElementById('boardFindBus').addEventListener('click', () => {
-    boardOverlay.classList.remove('open');
-    renderBusOptions();
-    busOptionsOverlay.classList.add('open');
-  });
-  boardOverlay.addEventListener('click', e => { if (e.target === boardOverlay) boardOverlay.classList.remove('open'); });
+  // keep "This bus · there in N min" live while the card is open
+  function refreshBoardingInfo() {
+    if (!boardState) return;
+    const plan = boardingPlan(boardState.from);
+    if (plan) renderBoarding(plan, boardState.walk);
+  }
+  boardBtn.addEventListener('click', () => { if (boardState) clearBoardingPoint(); else showBoardingPoint(); });
 
   const findBusBtn = document.getElementById('findBusBtn');
   findBusBtn.addEventListener('click', () => {
@@ -4323,6 +4351,7 @@
     if (typeof clearBoardingPoint === 'function') clearBoardingPoint();
     originCoord = coord;
     locationInput.value = label;
+    if (typeof syncClearButtons === 'function') syncClearButtons();
     if (originMarker) originMarker.remove();
     originMarker = new maplibregl.Marker({ element: makeUserEl() }).setLngLat(coord).addTo(map);
     etaCard.classList.remove('hidden');
@@ -4340,6 +4369,7 @@
     if (typeof clearBoardingPoint === 'function') clearBoardingPoint();
     destinationCoord = coord;
     destinationInput.value = name;
+    if (typeof syncClearButtons === 'function') syncClearButtons();
     if (isRidingBus) {
       const ridden = fleet.find(b => b.id === trackedBusId);
       if (ridden && rideStats) {
@@ -4405,6 +4435,22 @@
     destinationMarker = new maplibregl.Marker({ element: makeDestEl() }).setLngLat(coord).addTo(map);
     etaLabel.textContent = 'Nearest bus · to ' + name;
   }
+  // ✕ in the search fields: visible only when the field has text.
+  var clearOriginBtn = document.getElementById('clearOriginBtn'); // var: tick() calls syncClearButtons() before this line runs
+  var clearDestBtn = document.getElementById('clearDestBtn');
+  function syncClearButtons() {
+    if (!clearOriginBtn || !clearDestBtn) return;
+    clearOriginBtn.classList.toggle('hidden', !locationInput.value);
+    clearDestBtn.classList.toggle('hidden', !destinationInput.value);
+  }
+  function clearOrigin() {
+    if (typeof clearBoardingPoint === 'function') clearBoardingPoint();
+    originCoord = null;
+    locationInput.value = '';
+    if (originMarker) { originMarker.remove(); originMarker = null; }
+    clearGuideRoute();
+    etaCard.classList.add('hidden');
+  }
   function clearDestination() {
     if (typeof clearBoardingPoint === 'function') clearBoardingPoint();
     destinationCoord = null;
@@ -4412,6 +4458,18 @@
     if (destinationMarker) { destinationMarker.remove(); destinationMarker = null; }
     etaLabel.textContent = 'Nearest bus · Olongapo-bound';
   }
+
+  [[clearOriginBtn, locationInput, clearOrigin], [clearDestBtn, destinationInput, clearDestination]].forEach(([btn, input, clear]) => {
+    btn.addEventListener('mousedown', e => e.preventDefault()); // keep focus in the field
+    btn.addEventListener('click', () => {
+      clear();
+      input.value = '';
+      autocompleteList.classList.add('hidden');
+      syncClearButtons();
+      input.focus();
+    });
+    input.addEventListener('input', syncClearButtons);
+  });
 
   function restoreLiveState() {
     const snap = preDevState;
@@ -4811,13 +4869,15 @@
     while (k < ra.anchors.length && k < rb.anchors.length && ra.anchors[k][0] === rb.anchors[k][0] && ra.anchors[k][1] === rb.anchors[k][1]) k++;
     const splitKm = ra.anchorKm(Math.max(0, k - 1));
     let best = null;
+    // Only a real Victory Liner station that both services stop at (never a bare junction or an expressway):
+    // the last one before the routes split.
     MAJOR_TERMINALS.forEach(t => {
-      if (!t.lines.includes(ra.id) || !t.lines.includes(rb.id)) return;
+      if (t.type === 'booking' || !t.lines.includes(ra.id) || !t.lines.includes(rb.id)) return;
       const km = ra.kmAt(t.coord);
-      if (km > splitKm + 0.3 || splitKm - km > 25) return;
+      if (km > splitKm + 0.3) return;
       if (!best || km > best.km) best = { km, name: t.name };
     });
-    if (!best) { const p = describeRouteKm(ra, splitKm); best = { km: splitKm, name: p.town + ', ' + p.province }; }
+    if (!best) best = { km: 0, name: ra.ends[0] + ' Terminal' }; // every service starts at Pasay
     transferCache.set(key, best);
     return best;
   }
@@ -4872,7 +4932,7 @@
     if (wait) await new Promise(r => setTimeout(r, wait));
     lastNominatimAt = Date.now();
     const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ph&limit=3&accept-language=en' +
-      '&viewbox=119.55,16.00,121.20,14.30&bounded=0&q=' + encodeURIComponent(query);
+      '&viewbox=119.20,18.90,122.80,14.00&bounded=0&q=' + encodeURIComponent(query);
     const res = await fetch(url);
     if (!res.ok) throw new Error('Nominatim ' + res.status);
     const rows = await res.json();
@@ -5074,21 +5134,29 @@
       };
     },
 
-    async nearest_bus({ destination }, actions) {
-      if (!originCoord) return { ok: false, reason: 'location_not_set', tell_user: 'Set your location first (allow location, or tap the pin in "Your location").' };
+    async nearest_bus({ destination, origin }, actions) {
+      // Where the rider starts: what they said ("I'm in Alaminos"), else the app's location.
+      let startC = originCoord, startName = null;
+      if (origin && !/^(my location|here|me)$/i.test(origin.trim())) {
+        const o = await resolvePlace(origin);
+        if (!o.found) return { ok: false, reason: 'origin_not_found', query: origin, tell_user: "Couldn't find where they're starting from. Ask for a town or landmark." };
+        startC = o.coord; startName = o.name;
+      }
+      if (!startC) return { ok: false, reason: 'location_not_set', tell_user: 'Set your location first (allow location, or tap the pin in "Your location"), or say which town you are starting from.' };
+      
       const destPlace = destination ? await resolvePlace(destination)
         : destinationCoord ? { found: true, name: destinationInput.value || 'your destination', coord: destinationCoord } : null;
       if (destPlace && !destPlace.found) return { ok: false, reason: 'destination_not_found', query: destination, tell_user: "Couldn't find that destination. Ask for a town or landmark name." };
       const destC = destPlace ? destPlace.coord : null;
 
       // Which line(s), and whether the trip needs a transfer between lines.
-      const plan = destC ? transferPlan(originCoord, destC) : null;
-      const opts = tripRouteOptions(originCoord, destC);
+      const plan = destC ? transferPlan(startC, destC) : null;
+      const opts = tripRouteOptions(startC, destC);
       const boardRoute = plan ? plan.first.route : opts[0].route;
-      const from = routeRelation(boardRoute, originCoord);
+      const from = routeRelation(boardRoute, startC);
       let dest = null, stops;
       if (plan) {
-        stops = legOptions(transferLegs(originCoord, destC).legs[0]).map(o => ({ route: o.route, km: o.fromKm, dir: plan.first.dir }));
+        stops = legOptions(transferLegs(startC, destC).legs[0]).map(o => ({ route: o.route, km: o.fromKm, dir: plan.first.dir }));
         const alight = routeRelation(plan.second.route, destC);
         dest = { name: destPlace.name, get_off_at: alight.point.label, distance_from_route_km: alight.offRouteKm, relation_to_bus_route: alight.status };
       } else if (destC) {
@@ -5107,11 +5175,13 @@
 
       const buses = upcomingBuses(stops, 2);
       if (!buses.length) return { ok: false, reason: 'no_buses', tell_user: 'No buses are running on that side right now.' };
-      if (plan) actions.push({ type: 'track_trip', destCoord: destC, destName: destPlace.name, label: 'Track this trip (2 buses)' });
+      if (plan) actions.push({ type: 'track_trip', originCoord: startName ? startC : null, destCoord: destC, destName: destPlace.name, label: 'Track this trip (2 buses)' });
       else actions.push({ type: 'track', busId: buses[0].bus.id, label: 'Track ' + buses[0].bus.plate });
-      actions.push({ type: 'show', coord: from.point.coord, name: 'Boarding point', label: 'Show boarding point' });
+      actions.push(plan ? { type: 'boarding', trip: { originCoord: startC, destCoord: destC, destName: destPlace.name }, label: 'Show boarding point' }
+                        : { type: 'boarding', busId: buses[0].bus.id, fromCoord: startC, label: 'Show boarding point' });
       return {
         ok: true,
+        starting_from: startName || 'the user\'s location in the app',
         lines: lineNamesOf(stops.map(st => st.route)),
         board_at: from.point.label,
         distance_from_user_to_highway_km: from.offRouteKm,
@@ -5332,8 +5402,9 @@
   function runChatAction(a) {
     const mobile = !DESKTOP_QUERY.matches; // the chat sheet covers the map on phones
     if (a.type === 'track_trip') {
-      if (!originCoord) { addMessage('Set your location first, then I can plan the trip.', 'bot'); return; }
-      const opts = pickTripOptions(planTransferTrips(originCoord, a.destCoord, a.destName, getSpeedMultiplier()));
+      const from = a.originCoord || originCoord;
+      if (!from) { addMessage('Set your location first, then I can plan the trip.', 'bot'); return; }
+      const opts = pickTripOptions(planTransferTrips(from, a.destCoord, a.destName, getSpeedMultiplier()));
       if (!opts.length) { addMessage("I couldn't find connecting buses right now. Try again in a bit.", 'bot'); return; }
       if (mobile) closeChat();
       if (!destinationCoord) setDestination(a.destCoord, a.destName);
@@ -5347,9 +5418,21 @@
     } else if (a.type === 'set_destination') {
       if (mobile) closeChat();
       setDestination(a.coord, a.name);
-    } else if (a.type === 'show' && a.name === 'Boarding point') {
-      if (mobile) closeChat();
-      showBoardingPoint();
+    } else if (a.type === 'boarding') {
+      if (a.trip) {
+        const from = a.trip.originCoord || originCoord;
+        const opts = from ? pickTripOptions(planTrips(from, a.trip.destCoord, a.trip.destName, getSpeedMultiplier())) : [];
+        if (!opts.length) { addMessage("I couldn't find buses for that trip right now. Ask me again in a bit.", 'bot'); return; }
+        if (mobile) closeChat();
+        trackTrip(opts[0].trip);
+        showBoardingPoint(from);
+      } else {
+        const bus = busById(a.busId);
+        if (!bus) { addMessage('That bus is no longer on the road. Ask me again for a fresh one.', 'bot'); return; }
+        if (mobile) closeChat();
+        openBusSheet(bus);
+        showBoardingPoint(a.fromCoord || originCoord);
+      }
     } else if (a.type === 'show') {
       if (mobile) closeChat();
       if (chatShowMarker) chatShowMarker.remove();
@@ -5803,6 +5886,36 @@
     return null;
   }
 
+  /* ---------- Place names for the AI ----------
+     Smaller models treat "baguio" as an ordinary word but "Baguio" as a place, so known place
+     names are capitalized in the text sent to the AI (the chat still shows what was typed). */
+  let placeNamePattern = null, placeNameCanon = null;
+  const placeKey = t => t.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ');
+  function capitalizePlaces(text) {
+    if (!placeNamePattern) {
+      placeNameCanon = new Map();
+      const addOne = n => { n = n.trim(); if (n.length >= 3 && !placeNameCanon.has(placeKey(n))) placeNameCanon.set(placeKey(n), n); };
+      const add = name => {
+        const clean = name.replace(/\s*\(.*?\)\s*/g, ' ').replace(/ (Terminal|Booking Office|Bus Stopover)$/, '').trim();
+        addOne(clean);
+        addOne(clean.split(',')[0]);                     // "Puregold Tabang, Guiguinto" -> "Puregold Tabang"
+        addOne(clean.replace(/ City$/, ''));             // "Baguio City" -> "Baguio"
+        addOne(clean.split(',')[0].replace(/ City$/, ''));
+      };
+      LANDMARKS.forEach(l => add(l.name));
+      ROUTES.forEach(r => r.towns.forEach(t => add(t[1])));
+      const alts = [...placeNameCanon.values()].sort((x, y) => y.length - x.length)
+        .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\./g, '\\.?').replace(/ /g, '\\s+'));
+      placeNamePattern = new RegExp('(^|[^a-zñ])(' + alts.join('|') + ')(?![a-zñ])', 'gi');
+    }
+    return text.replace(placeNamePattern, (all, pre, m) => pre + (placeNameCanon.get(placeKey(m)) || m));
+  }
+  // When the model's reply was only leaked reasoning, answer from the live tool results instead.
+  const TOOL_FORMATTERS = {
+    nearest_bus: r => formatNearestBus(r), next_bus_at: r => formatNextBus(r), nearest_terminal: r => formatTerminal(r),
+    find_place: r => formatFindPlace(r), get_fare: r => r.ok ? formatFareResult(r) : (r.tell_user || null)
+  };
+
   /* ---------- The agent loop ---------- */
   function appContextForAI() {
     return {
@@ -5815,11 +5928,11 @@
       dev_mode: isDevOn()
     };
   }
-  async function callBusBoyWorker(messages, forceAnswer) {
+  async function callBusBoyWorker(messages, forceAnswer, strict) {
     const res = await fetch(BUSBOY_WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, context: appContextForAI(), final: !!forceAnswer })
+      body: JSON.stringify({ messages, context: appContextForAI(), final: !!forceAnswer, strict: !!strict })
     });
     let data = null;
     try { data = await res.json(); } catch (e) { /* non-JSON error */ }
@@ -5832,14 +5945,25 @@
   }
   async function runAgent(userText, typing) {
     const actions = [];
-    const convo = busboyHistory.slice(-BUSBOY_HISTORY_TURNS).concat([{ role: 'user', content: userText }]);
+    const convo = busboyHistory.slice(-BUSBOY_HISTORY_TURNS).concat([{ role: 'user', content: capitalizePlaces(userText) }]);
+    let lastTool = null, retriedLeak = false;
     for (let round = 0; round < BUSBOY_MAX_ROUNDS; round++) {
-      const data = await callBusBoyWorker(convo, round === BUSBOY_MAX_ROUNDS - 1);
+      const data = await callBusBoyWorker(convo, round === BUSBOY_MAX_ROUNDS - 1, retriedLeak);
       if (data.reply) return { text: data.reply, actions }; // Worker answered directly (e.g. guardrail)
       const msg = data.message || {};
       const calls = (msg.tool_calls || []).filter(c => c && c.function && BUSBOY_TOOLS[c.function.name]);
-      if (!calls.length) return { text: msg.content || "Sorry, I couldn't come up with an answer just now.", actions };
-      convo.push({ role: 'assistant', content: msg.content || null, tool_calls: calls });
+      if (!calls.length) {
+        if (data.reasoning_leak && !msg.content) {
+          // The model only "thought out loud". Prefer the real tool result; otherwise ask once more, strictly.
+          const fmt = lastTool && TOOL_FORMATTERS[lastTool.name];
+          const local = fmt ? fmt(lastTool.result) : null;
+          if (local) return { text: local, actions };
+          if (!retriedLeak) { retriedLeak = true; continue; }
+          return { text: "Sorry, I couldn't put that into words just now. Try one of the quick buttons below, or ask another way?", actions };
+        }
+        return { text: msg.content || "Sorry, I couldn't come up with an answer just now.", actions };
+      }
+      convo.push({ role: 'assistant', content: null, tool_calls: calls }); // drop any "thinking" text that came with the call
       for (const call of calls) {
         let args = {};
         try { args = JSON.parse(call.function.arguments || '{}'); } catch (e) { /* model sent bad JSON */ }
@@ -5848,6 +5972,7 @@
         try { result = await BUSBOY_TOOLS[call.function.name](args, actions); }
         catch (e) { result = { ok: false, error: 'tool_failed', detail: String(e.message || e) }; }
         convo.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+        lastTool = { name: call.function.name, result };
       }
       typing.set('Thinking…');
     }
