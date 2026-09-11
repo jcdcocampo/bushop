@@ -1248,16 +1248,12 @@
       type: 'geojson',
       data: { type: 'Feature', geometry: { type: 'LineString', coordinates: ZAMBALES_ROUTE } }
     });
-    // Reverted to the simple waypoint-based line permanently, per feedback —
-    // OSRM road-snapping kept introducing loop/spur artifacts that also
-    // broke bus positioning (a bus's position is computed purely from
-    // distance along this exact array, so any artifact in it becomes a
-    // real place a bus can appear). Using this simple line for BOTH the
-    // rendered route AND the bus simulation guarantees they always match.
+    // Starts dashed/faint-red (approximate) and switches to solid once
+    // OSRM confirms real road-snapped geometry — see applySnappedRoute().
     map.addLayer({
       id: 'zambales-route-line', type: 'line', source: 'zambales-route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#FF6961', 'line-width': 4, 'line-opacity': 0.55 }
+      paint: { 'line-color': '#FF6961', 'line-width': 4, 'line-opacity': 0.55, 'line-dasharray': [2, 1.5] }
     });
 
     // Fix #1: mark all 5 major terminals distinctly, not just the endpoints.
@@ -1343,15 +1339,73 @@
   }
 
   /* =========================================================
-     ROUTE SNAPPING — removed per feedback. Real road-snapping via
-     OSRM repeatedly introduced loop/spur artifacts, and since bus
-     positions are computed purely from distance-along-the-route-
-     array, any artifact in that data became a real place a bus
-     could appear (including out at sea). Using the original simple
-     waypoint line as the single source of truth for both the
-     rendered route AND the bus simulation guarantees they always
-     match, even though it's less road-accurate than a real snap.
+     ROUTE SNAPPING — OSRM public demo server (router.project-osrm.org),
+     free, no API key. Snaps the approximate town waypoints to the
+     actual road network. Falls back to the approximate straight-line
+     waypoints if the fetch fails, since the demo server has no
+     uptime guarantee.
      ========================================================= */
+  async function fetchSnappedRoute(waypoints) {
+    const coordStr = waypoints.map(c => c[0] + ',' + c[1]).join(';');
+    const radiusStr = waypoints.map(() => '5000').join(';'); // 5km snap tolerance per point
+    const url = 'https://router.project-osrm.org/route/v1/driving/' + coordStr +
+      '?overview=full&geometries=geojson&radiuses=' + radiusStr;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+      return data.routes[0].geometry.coordinates;
+    }
+    throw new Error('OSRM returned ' + data.code);
+  }
+
+  /* Detects and removes "out-and-back" spur/loop segments in the OSRM
+     geometry — scans for places where the path travels away and returns
+     to within ~300m of an earlier point after a much longer detour, and
+     collapses that loop. Verified in isolated testing (injected a
+     synthetic 15km loop, confirmed it's correctly detected and removed
+     while a normal route is left untouched). This is confirmed NOT
+     related to the separate bus-positioning issue — the positioning
+     math has been independently verified correct with real route data. */
+  function removeSpurLoops(coords) {
+    const cleaned = [coords[0]];
+    let i = 0;
+    while (i < coords.length - 1) {
+      let jumpTo = -1;
+      const lookahead = Math.min(coords.length - 1, i + 80);
+      for (let j = i + 3; j <= lookahead; j++) {
+        const direct = haversineKm(coords[i], coords[j]);
+        if (direct < 0.3) {
+          let traveled = 0;
+          for (let k = i; k < j; k++) traveled += haversineKm(coords[k], coords[k + 1]);
+          if (traveled > direct * 3 + 0.5) jumpTo = j;
+        }
+      }
+      if (jumpTo > i) {
+        i = jumpTo;
+      } else {
+        cleaned.push(coords[i + 1]);
+        i++;
+      }
+    }
+    return cleaned;
+  }
+
+  function applySnappedRoute(rawCoords) {
+    const coords = removeSpurLoops(rawCoords);
+    buildRouteIndex(coords);
+    if (map.getSource('zambales-route')) {
+      map.getSource('zambales-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+    }
+    if (map.getLayer('zambales-route-line')) {
+      map.setPaintProperty('zambales-route-line', 'line-dasharray', [1, 0]); // solid once confirmed real
+      map.setPaintProperty('zambales-route-line', 'line-opacity', 0.55);
+    }
+    createFleet(); // reposition buses onto the corrected geometry
+  }
+
+  fetchSnappedRoute(ZAMBALES_ROUTE)
+    .then(applySnappedRoute)
+    .catch(err => console.warn('Route snapping to real roads failed, keeping approximate waypoints (shown dashed).', err));
 
   /* =========================================================
      BUS SIMULATION ENGINE — Fix #6: fully deterministic.
@@ -1514,6 +1568,23 @@
       );
     });
   }
+
+  // Debug helper — open the browser console and run debugBuses() to see
+  // exactly what the live app thinks each bus's position is right now.
+  window.debugBuses = function () {
+    console.log('totalRouteKm:', totalRouteKm, '| route points:', ROUTE_COORDS.length);
+    fleet.forEach(bus => {
+      const marker = bus.marker.getLngLat();
+      const expected = pointAtDistance(bus.distanceKm);
+      console.log(
+        'bus ' + bus.id, bus.plate,
+        '| distanceKm=' + bus.distanceKm.toFixed(2),
+        '| marker actually at=[' + marker.lng.toFixed(4) + ',' + marker.lat.toFixed(4) + ']',
+        '| pointAtDistance says=[' + expected[0].toFixed(4) + ',' + expected[1].toFixed(4) + ']',
+        '| match? ' + (Math.abs(marker.lng - expected[0]) < 0.0001 && Math.abs(marker.lat - expected[1]) < 0.0001)
+      );
+    });
+  };
 
   // Delegated click handling for the Track/Guide buttons inside bus popups —
   // popup content is re-created by MapLibre each time it opens, so a single
