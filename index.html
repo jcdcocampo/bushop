@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BusHop — Zambales Line</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  :root {
+    --bg-app: #F5F5F7;
+    --surface: #FFFFFF;
+    --surface-translucent: rgba(255, 255, 255, 0.78);
+    --accent: #007AFF;
+    --accent-pressed: #0062CC;
+    --text-primary: #1D1D1F;
+    --text-secondary: #86868B;
+    --dev-pill-bg: #E8E8ED;
+    --dev-pill-text: #6E6E73;
+    --hairline: rgba(0, 0, 0, 0.08);
+    --shadow-float: 0 8px 30px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --radius-pill: 999px;
+    --radius-card: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-app);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #app {
+    position: relative;
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* ---------- MAP CANVAS ---------- */
+  #map-canvas { position: absolute; inset: 0; }
+
+  #map-canvas .maplibregl-ctrl-bottom-right,
+  #map-canvas .maplibregl-ctrl-bottom-left {
+    margin-bottom: 90px;
+  }
+
+  .maplibregl-popup-content {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    border-radius: 12px;
+    box-shadow: var(--shadow-float);
+    padding: 10px 12px;
+  }
+
+  .maplibregl-popup-content strong { display: block; font-size: 13px; color: var(--text-primary); }
+  .maplibregl-popup-content span { font-size: 11px; color: var(--text-secondary); }
+
+  .bus-marker {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(155deg, #0A84FF, #007AFF 55%, #005FCC);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 10px rgba(0, 122, 255, 0.45), 0 0 0 3px #FFFFFF;
+    cursor: pointer;
+  }
+  .bus-marker svg { width: 16px; height: 16px; }
+
+  .terminal-marker {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--text-primary);
+    box-shadow: 0 0 0 3px #FFFFFF, 0 2px 6px rgba(0,0,0,0.3);
+    cursor: pointer;
+  }
+
+  .user-marker {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.25), 0 2px 6px rgba(0,0,0,0.3);
+    position: relative;
+  }
+  .user-marker::after {
+    content: "";
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    background: rgba(0, 122, 255, 0.35);
+    animation: pulse 2s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.6); opacity: 0.8; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  .dest-marker {
+    width: 16px; height: 16px; border-radius: 50% 50% 50% 0;
+    background: #FF3B30;
+    transform: rotate(-45deg);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  }
+
+  .map-hint {
+    position: absolute;
+    top: 74px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 21;
+    background: var(--text-primary);
+    color: #fff;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-float);
+    white-space: nowrap;
+  }
+
+  /* ---------- HEADER ---------- */
+  header {
+    position: absolute;
+    top: max(16px, env(safe-area-inset-top));
+    left: 16px; right: 16px;
+    z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .brand {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-translucent);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    padding: 8px 14px 8px 10px;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-float);
+  }
+
+  .brand-mark {
+    width: 26px; height: 26px; border-radius: 8px;
+    background: linear-gradient(155deg, #0A84FF, #007AFF 55%, #005FCC);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .brand-mark svg { width: 15px; height: 15px; }
+  .brand-name { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+
+  .mode-pill {
+    background: var(--dev-pill-bg);
+    color: var(--dev-pill-text);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 2px 7px; border-radius: var(--radius-pill);
+    margin-left: 2px;
+  }
+
+  .dev-toggle {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-translucent);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    padding: 8px 12px; border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-float);
+    font-size: 13px; color: var(--text-secondary);
+  }
+
+  .switch {
+    position: relative; width: 40px; height: 24px;
+    border-radius: var(--radius-pill);
+    background: #E5E5EA;
+    cursor: pointer; transition: background 0.2s ease;
+    border: none; padding: 0; flex-shrink: 0;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    transition: transform 0.2s ease;
+  }
+  .switch.on { background: #34C759; }
+  .switch.on::after { transform: translateX(16px); }
+
+  /* ---------- WEATHER / TIME CAPSULE ---------- */
+  .weather-capsule {
+    position: absolute; top: 74px; right: 16px; z-index: 19;
+    background: var(--surface-translucent);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-float);
+    padding: 10px 14px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    min-width: 96px;
+    max-width: 190px;
+  }
+
+  .weather-row { display: flex; align-items: center; gap: 6px; }
+  .weather-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .weather-icon svg { width: 22px; height: 22px; }
+  .weather-temp { font-size: 17px; font-weight: 600; }
+  .weather-condition { font-size: 11px; color: var(--text-secondary); }
+
+  .dev-controls {
+    display: none; flex-direction: column; align-items: flex-end; gap: 6px;
+    margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--hairline);
+    width: 100%;
+  }
+  .dev-controls.visible { display: flex; }
+
+  .dev-row { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: flex-end; }
+  .dev-row label { font-size: 10px; color: var(--text-secondary); letter-spacing: 0.02em; }
+
+  .dev-controls input[type="time"],
+  .dev-controls input[type="number"],
+  .dev-controls select {
+    font-family: inherit; font-size: 12px; border: none;
+    background: var(--dev-pill-bg); color: var(--text-primary);
+    padding: 3px 6px; border-radius: 6px; width: 74px;
+  }
+  .dev-controls select { width: auto; }
+
+  /* ---------- BOTTOM CONTROL BAR ---------- */
+  .bottom-bar-wrap {
+    position: absolute;
+    left: 16px; right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 20;
+  }
+
+  .bottom-bar {
+    background: var(--surface-translucent);
+    backdrop-filter: blur(24px) saturate(1.7);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7);
+    border-radius: 26px;
+    box-shadow: var(--shadow-float);
+    padding: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .field-stack {
+    flex: 1; display: flex; flex-direction: column;
+    background: rgba(118, 118, 128, 0.08);
+    border-radius: 18px; overflow: hidden;
+    position: relative;
+  }
+
+  .field { display: flex; align-items: center; gap: 10px; padding: 10px 12px; position: relative; }
+  .field:first-child { border-bottom: 1px solid var(--hairline); }
+
+  .field-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .field-dot.origin { background: var(--accent); }
+  .field-dot.dest { background: transparent; border: 1.5px solid var(--text-secondary); }
+
+  .field input {
+    border: none; background: transparent; outline: none;
+    font-size: 14px; font-family: inherit; color: var(--text-primary); width: 100%;
+  }
+  .field input::placeholder { color: var(--text-secondary); }
+
+  .autocomplete-list {
+    position: absolute;
+    left: 8px; right: 8px;
+    bottom: calc(100% + 8px);
+    background: var(--surface);
+    border-radius: 14px;
+    box-shadow: var(--shadow-float);
+    overflow: hidden;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 25;
+  }
+  .autocomplete-item {
+    padding: 11px 14px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:active { background: rgba(0, 122, 255, 0.08); }
+  .autocomplete-item span { display: block; font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+  .chat-launch {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--accent); border: none;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .chat-launch:active { background: var(--accent-pressed); transform: scale(0.94); }
+  .chat-launch svg { width: 20px; height: 20px; }
+
+  /* ---------- LOCATION PERMISSION SHEET ---------- */
+  .permission-sheet {
+    position: absolute; left: 16px; right: 16px; bottom: 96px; z-index: 30;
+    background: var(--surface); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-float); padding: 20px; text-align: center;
+    max-width: 340px; margin: 0 auto;
+  }
+  .permission-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: linear-gradient(155deg, #0A84FF, #007AFF);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px;
+  }
+  .permission-icon svg { width: 24px; height: 24px; }
+  .permission-title { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .permission-body { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: 0 0 16px; }
+  .permission-actions { display: flex; flex-direction: column; gap: 8px; }
+
+  .btn-primary, .btn-secondary {
+    border: none; border-radius: 12px; padding: 12px;
+    font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+  }
+  .btn-primary { background: var(--accent); color: #FFFFFF; }
+  .btn-primary:active { background: var(--accent-pressed); }
+  .btn-secondary { background: transparent; color: var(--accent); }
+
+  /* ---------- ETA CARD ---------- */
+  .eta-card {
+    position: absolute; left: 16px; right: 16px; bottom: 96px; z-index: 18;
+    background: var(--surface-translucent);
+    backdrop-filter: blur(24px) saturate(1.7);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-float);
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .eta-info { display: flex; flex-direction: column; gap: 2px; }
+  .eta-label { font-size: 12px; color: var(--text-secondary); }
+  .eta-value { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .eta-plate { font-size: 12px; color: var(--text-secondary); }
+
+  .track-btn {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: var(--radius-pill); padding: 10px 18px;
+    font-size: 14px; font-weight: 600; font-family: inherit;
+    cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
+  .track-btn:active { background: var(--accent-pressed); }
+
+  .hidden { display: none !important; }
+
+  /* ---------- BUSBOY CHAT PANEL ---------- */
+  .chat-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .chat-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .chat-sheet {
+    width: 100%;
+    max-height: 82vh;
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    box-shadow: var(--shadow-float);
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .chat-overlay.open .chat-sheet { transform: translateY(0); }
+
+  .chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--hairline);
+    flex-shrink: 0;
+  }
+  .chat-header-brand { display: flex; align-items: center; gap: 10px; }
+  .chat-header-name { font-size: 16px; font-weight: 600; }
+  .chat-header-sub { font-size: 12px; color: var(--text-secondary); }
+  .chat-close {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--dev-pill-bg); border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .chat-close svg { width: 14px; height: 14px; }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 200px;
+  }
+
+  .msg {
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .msg.bot {
+    align-self: flex-start;
+    background: rgba(118, 118, 128, 0.1);
+    color: var(--text-primary);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.typing { color: var(--text-secondary); font-style: italic; }
+
+  .quick-replies {
+    display: flex;
+    gap: 8px;
+    padding: 0 18px 12px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .quick-replies::-webkit-scrollbar { display: none; }
+  .chip {
+    background: rgba(0, 122, 255, 0.1);
+    color: var(--accent);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .chip:active { background: rgba(0, 122, 255, 0.2); }
+
+  .chat-input-area {
+    padding: 10px 18px 6px;
+    border-top: 1px solid var(--hairline);
+    flex-shrink: 0;
+  }
+  .chat-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(118, 118, 128, 0.08);
+    border-radius: 22px;
+    padding: 6px 6px 6px 16px;
+  }
+  .chat-input-row input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-primary);
+  }
+  .chat-send {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .chat-send svg { width: 16px; height: 16px; }
+
+  .chat-disclaimer {
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    padding: 8px 18px 12px;
+  }
+
+  /* ---------- ACCESSIBILITY BASELINE ---------- */
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  .autocomplete-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .user-marker::after { animation: none; }
+    .chat-sheet, .chat-overlay, .switch, .switch::after { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div id="map-canvas"></div>
+  <div class="map-hint hidden" id="mapHint">Tap the map to set your location</div>
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 16.5V8.8C5 7.8 5.7 7 6.7 7h10.6c1 0 1.7.8 1.7 1.8v7.7M5 16.5c0 .8.6 1.5 1.5 1.5h11c.9 0 1.5-.7 1.5-1.5M5 16.5H4m14.5 0h1M8 19v-1M16 19v-1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="8.5" cy="14" r="1.1" fill="white"/>
+          <circle cx="15.5" cy="14" r="1.1" fill="white"/>
+        </svg>
+      </div>
+      <span class="brand-name">BusHop</span>
+      <span class="mode-pill" id="modePill">DEMO</span>
+    </div>
+
+    <div class="dev-toggle">
+      <span>Dev Mode</span>
+      <button class="switch" id="devSwitch" aria-label="Toggle developer mode"></button>
+    </div>
+  </header>
+
+  <div class="weather-capsule">
+    <div class="weather-row">
+      <span class="weather-icon" id="weatherIcon"></span>
+      <span class="weather-temp" id="weatherTemp">29°C</span>
+    </div>
+    <span class="weather-condition" id="weatherCondition">Partly cloudy</span>
+
+    <div class="dev-controls" id="devControls">
+      <div class="dev-row">
+        <label for="devTimeInput">Time</label>
+        <input type="time" value="14:30" id="devTimeInput">
+      </div>
+      <div class="dev-row">
+        <label for="devTempInput">Temp °C</label>
+        <input type="number" value="29" min="18" max="40" id="devTempInput">
+      </div>
+      <div class="dev-row">
+        <label for="devConditionInput">Sky</label>
+        <select id="devConditionInput">
+          <option value="sunny">Sunny</option>
+          <option value="partly-cloudy" selected>Partly cloudy</option>
+          <option value="cloudy">Cloudy</option>
+          <option value="rainy">Rainy</option>
+          <option value="stormy">Storm</option>
+        </select>
+      </div>
+      <div class="dev-row">
+        <label for="devLocationMode">Location</label>
+        <select id="devLocationMode">
+          <option value="gps">Device GPS</option>
+          <option value="tap">Tap map to set</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="eta-card hidden" id="etaCard">
+    <div class="eta-info">
+      <span class="eta-label" id="etaLabel">Nearest bus · Olongapo-bound</span>
+      <span class="eta-value" id="etaValue">Calculating…</span>
+      <span class="eta-plate" id="etaPlate"></span>
+    </div>
+    <button class="track-btn">Track this Bus</button>
+  </div>
+
+  <div class="permission-sheet" id="permissionSheet">
+    <div class="permission-icon">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 21s-7-6.1-7-11.2C5 6 8.1 3 12 3s7 3 7 6.8C19 14.9 12 21 12 21z" stroke="white" stroke-width="1.7" stroke-linejoin="round"/>
+        <circle cx="12" cy="9.5" r="2.3" stroke="white" stroke-width="1.7"/>
+      </svg>
+    </div>
+    <p class="permission-title">Use your location?</p>
+    <p class="permission-body">BusHop can show nearby buses and fill in your starting point automatically. Your location isn't stored — only kept for this session.</p>
+    <div class="permission-actions">
+      <button class="btn-primary" id="allowLocation">Allow While Using App</button>
+      <button class="btn-secondary" id="denyLocation">Enter Manually</button>
+    </div>
+  </div>
+
+  <div class="bottom-bar-wrap">
+    <div class="bottom-bar">
+      <div class="field-stack">
+        <div class="field">
+          <span class="field-dot origin"></span>
+          <input type="text" placeholder="Your location" id="locationInput" autocomplete="off" aria-label="Your location">
+        </div>
+        <div class="field">
+          <span class="field-dot dest"></span>
+          <input type="text" placeholder="Where to?" id="destinationInput" autocomplete="off" aria-label="Destination">
+        </div>
+        <div class="autocomplete-list hidden" id="autocompleteList"></div>
+      </div>
+      <button class="chat-launch" aria-label="Open BusBoy chat">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.1 0-2.2-.2-3.1-.6L4 21l1.4-4.6C4.5 15 4 13.6 4 12z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
+          <circle cx="8.5" cy="12" r="1" fill="white"/>
+          <circle cx="12" cy="12" r="1" fill="white"/>
+          <circle cx="15.5" cy="12" r="1" fill="white"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <!-- BUSBOY CHAT PANEL -->
+  <div class="chat-overlay" id="chatOverlay">
+    <div class="chat-sheet">
+      <div class="chat-header">
+        <div class="chat-header-brand">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.1 0-2.2-.2-3.1-.6L4 21l1.4-4.6C4.5 15 4 13.6 4 12z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="chat-header-name">BusBoy</div>
+            <div class="chat-header-sub" id="chatHeaderSub">Zambales Line assistant</div>
+          </div>
+        </div>
+        <button class="chat-close" id="chatClose" aria-label="Close chat">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 5l14 14M19 5L5 19" stroke="#1D1D1F" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <div class="quick-replies">
+        <button class="chip" data-quick="fare">What's the fare?</button>
+        <button class="chip" data-quick="terminal">Nearest terminal?</button>
+        <button class="chip" data-quick="arrival">Next bus arrival?</button>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="chat-input-row">
+          <input type="text" placeholder="Ask BusBoy…" id="chatInput" autocomplete="off" aria-label="Message BusBoy">
+          <button class="chat-send" id="chatSend" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12h16M13 6l6 6-6 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="chat-disclaimer">BusBoy's responses may be inaccurate. Please verify.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* =========================================================
+     WEATHER ICON
+     ========================================================= */
+  const weatherIcons = {
+    sunny: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="5" fill="#FF9F0A"/><g stroke="#FF9F0A" stroke-width="1.6" stroke-linecap="round"><path d="M12 2v2.2M12 19.8V22M4.2 12H2M22 12h-2.2M5.6 5.6l1.5 1.5M16.9 16.9l1.5 1.5M18.4 5.6l-1.5 1.5M7.1 16.9l-1.5 1.5"/></g></svg>',
+    'partly-cloudy': '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="4" fill="#FF9F0A"/><path d="M6.5 18h10.5a3.5 3.5 0 0 0 .4-6.98A5 5 0 0 0 8 10.2 3.5 3.5 0 0 0 6.5 18z" fill="#A9B4C0"/></svg>',
+    cloudy: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18h11.5a3.8 3.8 0 0 0 .3-7.58A5.5 5.5 0 0 0 7.2 9.3 3.8 3.8 0 0 0 6 18z" fill="#8E97A1"/></svg>',
+    rainy: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 14h11.2a3.6 3.6 0 0 0 .3-7.18A5.2 5.2 0 0 0 6.9 5.3 3.6 3.6 0 0 0 5.5 14z" fill="#8E97A1"/><g stroke="#007AFF" stroke-width="1.6" stroke-linecap="round"><path d="M8 17.5l-1 2.3M12 17.5l-1 2.3M16 17.5l-1 2.3"/></g></svg>',
+    stormy: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 13h11.2a3.6 3.6 0 0 0 .3-7.18A5.2 5.2 0 0 0 6.9 4.3 3.6 3.6 0 0 0 5.5 13z" fill="#6E7883"/><path d="M12.5 13.5l-2.7 4.3h2.2l-1.6 3.9 4-5.1h-2.3l1.7-3.1z" fill="#FF9F0A"/></svg>'
+  };
+  const conditionLabels = { sunny: 'Sunny', 'partly-cloudy': 'Partly cloudy', cloudy: 'Cloudy', rainy: 'Rainy', stormy: 'Storm' };
+
+  const weatherIconEl = document.getElementById('weatherIcon');
+  const weatherTempEl = document.getElementById('weatherTemp');
+  const weatherConditionEl = document.getElementById('weatherCondition');
+
+  let currentCondition = 'partly-cloudy';
+  let currentTemp = 29;
+  let liveCondition = 'partly-cloudy';
+  let liveTemp = 29;
+  let weatherCoord = [120.28, 14.85]; // default reference point: Olongapo area, until an origin is set
+
+  function renderWeather(condition, tempC) {
+    currentCondition = condition;
+    currentTemp = tempC;
+    weatherIconEl.innerHTML = weatherIcons[condition] || weatherIcons['partly-cloudy'];
+    weatherConditionEl.textContent = conditionLabels[condition] || 'Partly cloudy';
+    weatherTempEl.textContent = tempC + '°C';
+  }
+
+  /* =========================================================
+     LIVE WEATHER — Open-Meteo, no API key required
+     ========================================================= */
+  function mapWeatherCode(code) {
+    if (code === 0) return 'sunny';
+    if (code === 1 || code === 2) return 'partly-cloudy';
+    if (code === 3 || code === 45 || code === 48) return 'cloudy';
+    if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code)) return 'rainy';
+    if ([95,96,99].includes(code)) return 'stormy';
+    return 'partly-cloudy';
+  }
+
+  async function fetchLiveWeather(coord) {
+    weatherCoord = coord;
+    try {
+      const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + coord[1] +
+        '&longitude=' + coord[0] + '&current=temperature_2m,weather_code&timezone=auto';
+      const res = await fetch(url);
+      const data = await res.json();
+      liveTemp = Math.round(data.current.temperature_2m);
+      liveCondition = mapWeatherCode(data.current.weather_code);
+      if (!devSwitch.classList.contains('on')) renderWeather(liveCondition, liveTemp);
+    } catch (err) {
+      // Network unavailable or blocked — keep showing the last known reading
+      // rather than surfacing an error in a weather capsule.
+      console.warn('Live weather fetch failed, keeping last known reading.', err);
+    }
+  }
+
+  renderWeather(currentCondition, currentTemp); // initial paint while the live fetch is in flight
+  fetchLiveWeather(weatherCoord);
+  setInterval(() => { if (!devSwitch.classList.contains('on')) fetchLiveWeather(weatherCoord); }, 15 * 60 * 1000);
+
+  /* =========================================================
+     DEV MODE
+     ========================================================= */
+  const devSwitch = document.getElementById('devSwitch');
+  const modePill = document.getElementById('modePill');
+  const devControls = document.getElementById('devControls');
+  const devTempInput = document.getElementById('devTempInput');
+  const devConditionInput = document.getElementById('devConditionInput');
+  const devLocationMode = document.getElementById('devLocationMode');
+  const mapHint = document.getElementById('mapHint');
+
+  devSwitch.addEventListener('click', () => {
+    const isOn = devSwitch.classList.toggle('on');
+    modePill.textContent = isOn ? 'DEV' : 'DEMO';
+    devControls.classList.toggle('visible', isOn);
+    if (isOn) {
+      // Seed the override controls with the actual live reading, so "override"
+      // starts from reality rather than resetting to an arbitrary default.
+      devTempInput.value = liveTemp;
+      devConditionInput.value = liveCondition;
+      renderWeather(liveCondition, liveTemp);
+      updateMapHint();
+    } else {
+      mapHint.classList.add('hidden');
+      renderWeather(liveCondition, liveTemp); // hand control back to live data
+    }
+  });
+
+  devTempInput.addEventListener('input', () => renderWeather(devConditionInput.value, devTempInput.value));
+  devConditionInput.addEventListener('change', () => renderWeather(devConditionInput.value, devTempInput.value));
+  devLocationMode.addEventListener('change', updateMapHint);
+
+  function updateMapHint() {
+    const active = devSwitch.classList.contains('on') && devLocationMode.value === 'tap';
+    mapHint.classList.toggle('hidden', !active);
+  }
+
+  /* =========================================================
+     LANDMARKS — route towns, terminals, and one named landmark
+     from the spec (Puregold Tabang, Guiguinto) for BusBoy-style
+     proximity lookups. Coordinates are approximate placeholders.
+     ========================================================= */
+  const LANDMARKS = [
+    { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9040, 15.7700] },
+    { name: 'Masinloc', note: 'Zambales', coord: [119.9330, 15.5900] },
+    { name: 'Candelaria', note: 'Zambales', coord: [119.8800, 15.5300] },
+    { name: 'Iba Terminal', note: 'Provincial capital', coord: [119.9780, 15.3297] },
+    { name: 'Botolan', note: 'Zambales', coord: [119.9600, 15.2800] },
+    { name: 'San Felipe', note: 'Zambales', coord: [120.0500, 15.0900] },
+    { name: 'San Antonio', note: 'Zambales', coord: [120.1444, 15.0958] },
+    { name: 'Subic', note: 'SBMA area', coord: [120.2400, 14.8781] },
+    { name: 'Olongapo Terminal', note: 'Major hub', coord: [120.2827, 14.8294] },
+    { name: 'Dinalupihan', note: 'Bataan, SCTEX junction', coord: [120.4694, 14.8762] },
+    { name: 'Puregold Tabang, Guiguinto', note: 'Landmark near southern corridor', coord: [120.8790, 14.8600] }
+  ];
+
+  /* =========================================================
+     MAP
+     ========================================================= */
+  const ZAMBALES_ROUTE = [
+    [120.8823, 14.8524], [120.6500, 14.9200], [120.4694, 14.8762], [120.2827, 14.8294],
+    [120.2400, 14.8781], [120.1936, 14.9257], [120.1592, 15.0000], [120.1444, 15.0958],
+    [120.0850, 15.0500], [120.0500, 15.0900], [120.0200, 15.1300], [119.9600, 15.2800],
+    [119.9780, 15.3297], [119.9040, 15.4350], [119.8800, 15.5300], [119.9330, 15.5900],
+    [119.9040, 15.7700]
+  ];
+  const CORRIDOR_BOUNDS = [[119.55, 14.55], [121.05, 16.00]];
+
+  const map = new maplibregl.Map({
+    container: 'map-canvas',
+    style: 'https://tiles.openfreemap.org/styles/positron',
+    center: [120.15, 15.10],
+    zoom: 8.6,
+    minZoom: 8,
+    maxZoom: 17,
+    maxBounds: CORRIDOR_BOUNDS,
+    attributionControl: { compact: true }
+  });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+
+  let originMarker = null;
+  let destinationMarker = null;
+  let originCoord = null;
+  let destinationCoord = null;
+
+  map.on('load', () => {
+    map.addSource('zambales-route', {
+      type: 'geojson',
+      data: { type: 'Feature', geometry: { type: 'LineString', coordinates: ZAMBALES_ROUTE } }
+    });
+    map.addLayer({
+      id: 'zambales-route-line', type: 'line', source: 'zambales-route',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#007AFF', 'line-width': 4, 'line-opacity': 0.85 }
+    });
+
+    new maplibregl.Marker({ element: makeTerminalEl() })
+      .setLngLat(ZAMBALES_ROUTE[0])
+      .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML('<strong>Manila-bound reference point</strong><span>Near Guiguinto, Bulacan</span>'))
+      .addTo(map);
+
+    new maplibregl.Marker({ element: makeTerminalEl() })
+      .setLngLat(ZAMBALES_ROUTE[ZAMBALES_ROUTE.length - 1])
+      .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML('<strong>Sta. Cruz Terminal</strong><span>Northern end of the line</span>'))
+      .addTo(map);
+
+    createFleet();
+  });
+
+  map.on('click', (e) => {
+    if (devSwitch.classList.contains('on') && devLocationMode.value === 'tap') {
+      setOrigin([e.lngLat.lng, e.lngLat.lat], 'Custom pin');
+    }
+  });
+
+  function makeTerminalEl() { const el = document.createElement('div'); el.className = 'terminal-marker'; return el; }
+  function makeBusEl() {
+    const el = document.createElement('div');
+    el.className = 'bus-marker';
+    el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 16.5V8.8C5 7.8 5.7 7 6.7 7h10.6c1 0 1.7.8 1.7 1.8v7.7M5 16.5c0 .8.6 1.5 1.5 1.5h11c.9 0 1.5-.7 1.5-1.5M5 16.5H4m14.5 0h1M8 19v-1M16 19v-1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="14" r="1.1" fill="white"/><circle cx="15.5" cy="14" r="1.1" fill="white"/></svg>';
+    return el;
+  }
+  function makeUserEl() { const el = document.createElement('div'); el.className = 'user-marker'; return el; }
+  function makeDestEl() { const el = document.createElement('div'); el.className = 'dest-marker'; return el; }
+
+  /* =========================================================
+     ROUTE GEOMETRY HELPERS (for placing and projecting buses)
+     ========================================================= */
+  function haversineKm(a, b) {
+    const toRad = d => d * Math.PI / 180;
+    const R = 6371;
+    const dLat = toRad(b[1] - a[1]), dLng = toRad(b[0] - a[0]);
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+
+  const cumulativeKm = [0];
+  for (let i = 1; i < ZAMBALES_ROUTE.length; i++) {
+    cumulativeKm.push(cumulativeKm[i - 1] + haversineKm(ZAMBALES_ROUTE[i - 1], ZAMBALES_ROUTE[i]));
+  }
+  const totalRouteKm = cumulativeKm[cumulativeKm.length - 1];
+
+  function pointAtDistance(km) {
+    const d = Math.max(0, Math.min(km, totalRouteKm));
+    for (let i = 1; i < cumulativeKm.length; i++) {
+      if (d <= cumulativeKm[i]) {
+        const segStart = cumulativeKm[i - 1], segEnd = cumulativeKm[i];
+        const t = segEnd === segStart ? 0 : (d - segStart) / (segEnd - segStart);
+        const [lng1, lat1] = ZAMBALES_ROUTE[i - 1], [lng2, lat2] = ZAMBALES_ROUTE[i];
+        return [lng1 + (lng2 - lng1) * t, lat1 + (lat2 - lat1) * t];
+      }
+    }
+    return ZAMBALES_ROUTE[ZAMBALES_ROUTE.length - 1];
+  }
+
+  function distanceAlongRouteForCoord(coord) {
+    let best = { dist: Infinity, cum: 0 };
+    for (let i = 1; i < ZAMBALES_ROUTE.length; i++) {
+      const p1 = ZAMBALES_ROUTE[i - 1], p2 = ZAMBALES_ROUTE[i];
+      const dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+      const lenSq = dx * dx + dy * dy || 1e-12;
+      let t = ((coord[0] - p1[0]) * dx + (coord[1] - p1[1]) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      const projLng = p1[0] + dx * t, projLat = p1[1] + dy * t;
+      const dLng = coord[0] - projLng, dLat = coord[1] - projLat;
+      const dist = Math.sqrt(dLng * dLng + dLat * dLat);
+      if (dist < best.dist) {
+        const segKm = haversineKm(p1, p2);
+        best = { dist, cum: cumulativeKm[i - 1] + segKm * t };
+      }
+    }
+    return best.cum;
+  }
+
+  /* =========================================================
+     BUS SIMULATION ENGINE
+     Fleet size is derived from Victory Liner's published Zambales
+     Line schedules (~152 one-way departures/day across all Manila
+     terminals to Olongapo/Iba/Sta. Cruz), cross-referenced against
+     average trip duration to estimate concurrently-active buses
+     on the corridor at a given time (~25-30 at peak). Not an
+     official figure from Victory Liner — worth confirming with
+     them directly before treating it as authoritative.
+     Speed is modulated by traffic-pattern bucket, live weather,
+     per-bus jitter (stand-ins for lights/stops), and occasional
+     randomized incidents.
+     ========================================================= */
+  let fleet = [];
+  let currentBucket = null;
+  const busCounts = { peak: 30, midday: 20, night: 12 };
+
+  function generatePlate(seed) {
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let s = seed * 9301 + 49297;
+    function rnd() { s = (s * 9301 + 49297) % 233280; return s / 233280; }
+    let letterPart = '';
+    for (let i = 0; i < 3; i++) letterPart += letters[Math.floor(rnd() * letters.length)];
+    const numberPart = Math.floor(rnd() * 900 + 100);
+    return letterPart + ' ' + numberPart;
+  }
+
+  function getEffectiveHour() {
+    if (devSwitch.classList.contains('on')) {
+      const [h, m] = devTimeInput.value.split(':').map(Number);
+      return h + m / 60;
+    }
+    const now = new Date();
+    return now.getHours() + now.getMinutes() / 60;
+  }
+
+  function bucketForHour(hour) {
+    if ((hour >= 6.5 && hour < 9.5) || (hour >= 16.5 && hour < 19.5)) return 'peak';
+    if (hour >= 9.5 && hour < 16.5) return 'midday';
+    return 'night';
+  }
+
+  const weatherSpeedMultiplier = { sunny: 1.0, 'partly-cloudy': 0.97, cloudy: 0.92, rainy: 0.75, stormy: 0.55 };
+  const bucketSpeedMultiplier = { peak: 0.55, midday: 0.85, night: 1.0 };
+
+  function getSpeedMultiplier() {
+    const bucket = bucketForHour(getEffectiveHour());
+    const condition = devSwitch.classList.contains('on') ? devConditionInput.value : currentCondition;
+    return bucketSpeedMultiplier[bucket] * (weatherSpeedMultiplier[condition] || 1);
+  }
+
+  function createFleet() {
+    fleet.forEach(b => b.marker.remove());
+    fleet = [];
+    const bucket = bucketForHour(getEffectiveHour());
+    const count = busCounts[bucket];
+
+    for (let i = 0; i < count; i++) {
+      const direction = i % 2 === 0 ? 1 : -1;
+      const startFrac = Math.floor(i / 2) / Math.ceil(count / 2);
+      const distanceKm = direction === 1 ? startFrac * totalRouteKm : totalRouteKm - startFrac * totalRouteKm;
+      const plate = generatePlate(i);
+      const marker = new maplibregl.Marker({ element: makeBusEl() }).setLngLat(pointAtDistance(distanceKm)).addTo(map);
+      marker.setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(
+        '<strong>' + plate + '</strong><span>' + (direction === 1 ? 'Northbound' : 'Southbound') + '</span>'
+      ));
+      fleet.push({ plate, direction, distanceKm, baseSpeed: 42 + Math.random() * 8, incidentTicks: 0, marker });
+    }
+    currentBucket = bucket;
+  }
+
+  function maybeRegenerateFleet() {
+    const bucket = bucketForHour(getEffectiveHour());
+    if (bucket !== currentBucket) createFleet();
+  }
+
+  function tick() {
+    if (fleet.length === 0) return;
+    maybeRegenerateFleet();
+    const multiplier = getSpeedMultiplier();
+
+    fleet.forEach(bus => {
+      let speedKmH = bus.baseSpeed * multiplier * (0.85 + Math.random() * 0.3);
+      if (bus.incidentTicks > 0) {
+        speedKmH *= 0.25;
+        bus.incidentTicks--;
+      } else if (Math.random() < 0.01) {
+        bus.incidentTicks = 8; // simulated incident/heavy congestion for ~8 seconds
+      }
+      const deltaKm = speedKmH * (1 / 3600);
+      bus.distanceKm += bus.direction * deltaKm;
+      if (bus.distanceKm >= totalRouteKm) { bus.distanceKm = totalRouteKm; bus.direction = -1; }
+      if (bus.distanceKm <= 0) { bus.distanceKm = 0; bus.direction = 1; }
+      bus.marker.setLngLat(pointAtDistance(bus.distanceKm));
+    });
+
+    updateNearestBusETA(multiplier);
+  }
+
+  setInterval(tick, 1000);
+  devTimeInput.addEventListener('input', maybeRegenerateFleet);
+
+  function updateNearestBusETA(multiplier) {
+    if (!originCoord) return;
+    const originDist = distanceAlongRouteForCoord(originCoord);
+    let desiredDirection = null;
+    if (destinationCoord) {
+      const destDist = distanceAlongRouteForCoord(destinationCoord);
+      desiredDirection = destDist >= originDist ? 1 : -1;
+    }
+
+    let best = null, bestGap = Infinity;
+    fleet.forEach(bus => {
+      if (desiredDirection !== null && bus.direction !== desiredDirection) return;
+      const approaching = bus.direction === 1 ? bus.distanceKm <= originDist : bus.distanceKm >= originDist;
+      if (!approaching) return;
+      const gap = Math.abs(originDist - bus.distanceKm);
+      if (gap < bestGap) { bestGap = gap; best = bus; }
+    });
+
+    if (!best) {
+      etaValueEl.textContent = 'No bus approaching';
+      etaPlateEl.textContent = '';
+      return;
+    }
+    const effectiveSpeed = Math.max(best.baseSpeed * multiplier, 5);
+    const etaMinutes = Math.max(1, Math.round((bestGap / effectiveSpeed) * 60));
+    etaValueEl.textContent = etaMinutes + ' min away';
+    etaPlateEl.textContent = 'Plate ' + best.plate;
+    etaLabel.textContent = 'Nearest bus · ' + (best.direction === 1 ? 'Northbound' : 'Southbound') +
+      (destinationCoord ? ' · to ' + destinationInput.value : '');
+  }
+
+  /* =========================================================
+     ORIGIN / DESTINATION STATE
+     ========================================================= */
+  const locationInput = document.getElementById('locationInput');
+  const destinationInput = document.getElementById('destinationInput');
+  const etaCard = document.getElementById('etaCard');
+  const etaLabel = document.getElementById('etaLabel');
+  const etaValueEl = document.getElementById('etaValue');
+  const etaPlateEl = document.getElementById('etaPlate');
+
+  function setOrigin(coord, label) {
+    originCoord = coord;
+    locationInput.value = label;
+    if (originMarker) originMarker.remove();
+    originMarker = new maplibregl.Marker({ element: makeUserEl() }).setLngLat(coord).addTo(map);
+    etaCard.classList.remove('hidden');
+    fitToMarkers();
+    map.flyTo({ center: coord, zoom: Math.max(map.getZoom(), 11) });
+    if (!devSwitch.classList.contains('on')) fetchLiveWeather(coord);
+  }
+
+  function setDestination(coord, name) {
+    destinationCoord = coord;
+    destinationInput.value = name;
+    if (destinationMarker) destinationMarker.remove();
+    destinationMarker = new maplibregl.Marker({ element: makeDestEl() }).setLngLat(coord).addTo(map);
+    etaLabel.textContent = 'Nearest bus · to ' + name;
+    fitToMarkers();
+  }
+
+  function fitToMarkers() {
+    if (originCoord && destinationCoord) {
+      const bounds = new maplibregl.LngLatBounds(originCoord, originCoord);
+      bounds.extend(destinationCoord);
+      map.fitBounds(bounds, { padding: { top: 140, bottom: 220, left: 60, right: 60 }, maxZoom: 13 });
+    }
+  }
+
+  /* =========================================================
+     GEOLOCATION (permission sheet)
+     ========================================================= */
+  const permissionSheet = document.getElementById('permissionSheet');
+
+  function isInsideCorridor(coord) {
+    const [lng, lat] = coord;
+    return lng > CORRIDOR_BOUNDS[0][0] - 0.3 && lng < CORRIDOR_BOUNDS[1][0] + 0.3 &&
+           lat > CORRIDOR_BOUNDS[0][1] - 0.3 && lat < CORRIDOR_BOUNDS[1][1] + 0.3;
+  }
+
+  document.getElementById('allowLocation').addEventListener('click', () => {
+    permissionSheet.classList.add('hidden');
+    if (!navigator.geolocation) {
+      setOrigin(ZAMBALES_ROUTE[6], 'Current Location (simulated)');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coord = [pos.coords.longitude, pos.coords.latitude];
+        if (isInsideCorridor(coord)) {
+          setOrigin(coord, 'Current Location');
+        } else {
+          setOrigin(ZAMBALES_ROUTE[6], 'Current Location (simulated — you\'re outside the corridor)');
+        }
+      },
+      () => setOrigin(ZAMBALES_ROUTE[6], 'Current Location (simulated)'),
+      { timeout: 6000 }
+    );
+  });
+
+  document.getElementById('denyLocation').addEventListener('click', () => {
+    permissionSheet.classList.add('hidden');
+  });
+
+  /* =========================================================
+     AUTOCOMPLETE — shared between location + destination fields
+     ========================================================= */
+  const autocompleteList = document.getElementById('autocompleteList');
+  let activeField = null;
+
+  function showAutocomplete(query, field) {
+    const q = query.trim().toLowerCase();
+    if (!q) { autocompleteList.classList.add('hidden'); return; }
+    const matches = LANDMARKS.filter(l => l.name.toLowerCase().includes(q)).slice(0, 5);
+    if (matches.length === 0) { autocompleteList.classList.add('hidden'); return; }
+
+    autocompleteList.innerHTML = '';
+    matches.forEach(landmark => {
+      const item = document.createElement('div');
+      item.className = 'autocomplete-item';
+      item.innerHTML = landmark.name + '<span>' + landmark.note + '</span>';
+      item.addEventListener('click', () => {
+        if (field === 'origin') {
+          setOrigin(landmark.coord, landmark.name);
+        } else {
+          setDestination(landmark.coord, landmark.name);
+        }
+        autocompleteList.classList.add('hidden');
+      });
+      autocompleteList.appendChild(item);
+    });
+    autocompleteList.classList.remove('hidden');
+  }
+
+  locationInput.addEventListener('input', () => { activeField = 'origin'; showAutocomplete(locationInput.value, 'origin'); });
+  destinationInput.addEventListener('input', () => { activeField = 'destination'; showAutocomplete(destinationInput.value, 'destination'); });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.field-stack')) autocompleteList.classList.add('hidden');
+  });
+
+  /* =========================================================
+     BUSBOY — chat panel, weather-aware greeting, cached FAQs,
+     and the OpenRouter call routed through a Cloudflare Worker.
+     =========================================================
+     IMPORTANT: replace this with your deployed Worker's URL.
+     The Worker (see worker.js) holds the OpenRouter key server-side
+     so it's never exposed in this front-end code. Until deployed,
+     free-text questions fail gracefully with a setup note; the
+     quick-reply chips below work immediately since they're
+     answered from cached local data and never call the API. */
+  const BUSBOY_WORKER_URL = 'https://YOUR-WORKER-SUBDOMAIN.workers.dev/chat';
+
+  const FARES_BY_DEST = {
+    'olongapo': '₱320 (Inner Cities) / ₱416 (Express)',
+    'iba': '₱495 (Inner Cities) up to ₱640 (Deluxe Express)',
+    'sta. cruz': '₱648 (Inner Cities) up to ₱805 (Deluxe Express)',
+    'santa cruz': '₱648 (Inner Cities) up to ₱805 (Deluxe Express)'
+  };
+  const FARES = {
+    fare: "Fares from Manila: Olongapo ₱320 (Inner Cities) / ₱416 (Express), Iba ₱495–₱640, Sta. Cruz ₱648–₱805, depending on bus class. Exact fare depends on your boarding point along the line."
+  };
+
+  const chatOverlay = document.getElementById('chatOverlay');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatHeaderSub = document.getElementById('chatHeaderSub');
+  const chatInput = document.getElementById('chatInput');
+  let chatOpened = false;
+
+  function getGreeting() {
+    const hour = getEffectiveHour();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+    const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
+
+    const variants = {
+      sunny: { sub: 'Clear skies — smooth ride ahead.' },
+      'partly-cloudy': { sub: 'Fair weather along the line today.' },
+      cloudy: { sub: 'Overcast today — buses running close to normal.' },
+      rainy: { sub: "Don't forget your umbrella!" },
+      stormy: { sub: 'Stay safe — buses may run slower than usual.' }
+    };
+    const variant = variants[currentCondition] || variants['partly-cloudy'];
+    return { title: 'Good ' + timeOfDay + ', BUSahero', sub: variant.sub, timeLabel };
+  }
+
+  function addMessage(text, sender) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + sender;
+    el.textContent = text;
+    chatMessages.appendChild(el);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return el;
+  }
+
+  function openChat() {
+    chatOverlay.classList.add('open');
+    chatInput.focus();
+    if (!chatOpened) {
+      const greeting = getGreeting();
+      chatHeaderSub.textContent = greeting.sub;
+      addMessage(greeting.title + '. ' + greeting.sub + ' Ask me about fares, terminals, or your next bus.', 'bot');
+      chatOpened = true;
+    }
+  }
+
+  document.querySelector('.chat-launch').addEventListener('click', openChat);
+  document.getElementById('chatClose').addEventListener('click', () => chatOverlay.classList.remove('open'));
+
+  /* ---------------------------------------------------------
+     CACHED FAQ ANSWERS — shared by quick-reply chips AND typed
+     free-text questions. Answering from here never calls the
+     Worker/OpenRouter at all, which is the point: it keeps the
+     free-tier request budget for questions that actually need
+     the LLM's reasoning.
+     --------------------------------------------------------- */
+  function fareAnswer(text) {
+    const lower = (text || '').toLowerCase();
+    for (const key in FARES_BY_DEST) {
+      if (lower.includes(key)) return 'Fare to ' + key.replace(/^\w/, c => c.toUpperCase()) + ': ' + FARES_BY_DEST[key] + '.';
+    }
+    return FARES.fare;
+  }
+
+  function nearestTerminalAnswer() {
+    if (!originCoord) return "Set your location on the map first and I'll find your nearest terminal.";
+    let nearest = LANDMARKS[0], bestDist = Infinity;
+    LANDMARKS.forEach(l => {
+      const d = haversineKm(originCoord, l.coord);
+      if (d < bestDist) { bestDist = d; nearest = l; }
+    });
+    return 'Nearest stop looks like ' + nearest.name + ', about ' + bestDist.toFixed(1) + ' km from your location.';
+  }
+
+  function nextArrivalAnswer() {
+    const val = etaValueEl.textContent, plate = etaPlateEl.textContent;
+    if (originCoord && val && val !== 'Calculating…') {
+      return 'Nearest approaching bus is ' + val + (plate ? ' (' + plate + ')' : '') + '.';
+    }
+    return "Set your location first and I'll check the nearest approaching bus.";
+  }
+
+  function routeCoverageAnswer() {
+    return 'BusHop currently covers the Zambales Line corridor: ' + LANDMARKS.map(l => l.name).join(', ') + '.';
+  }
+
+  // Pattern → answer function, checked in order. First match wins.
+  const FAQ_PATTERNS = [
+    { test: /fare|magkano|presyo|bayad|how much/i, answer: fareAnswer },
+    { test: /terminal|nearest stop|boarding point|saan.*sakay/i, answer: () => nearestTerminalAnswer() },
+    { test: /next bus|arrival|\beta\b|susunod na bus|paparating/i, answer: () => nextArrivalAnswer() },
+    { test: /route|coverage|which towns|saklaw|barangay|\bstops\b/i, answer: () => routeCoverageAnswer() }
+  ];
+
+  function matchCachedFAQ(text) {
+    const hit = FAQ_PATTERNS.find(p => p.test.test(text));
+    return hit ? hit.answer(text) : null;
+  }
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const key = chip.dataset.quick;
+      addMessage(chip.textContent, 'user');
+      if (key === 'fare') addMessage(fareAnswer(''), 'bot');
+      else if (key === 'terminal') addMessage(nearestTerminalAnswer(), 'bot');
+      else if (key === 'arrival') addMessage(nextArrivalAnswer(), 'bot');
+    });
+  });
+
+  async function sendToBusBoy(userText) {
+    const typingEl = addMessage('BusBoy is typing…', 'bot typing');
+    try {
+      const context = {
+        weather: currentCondition,
+        temperature: currentTemp,
+        originSet: !!originCoord,
+        destination: destinationCoord ? destinationInput.value : null,
+        nearestBusEta: etaValueEl.textContent || null
+      };
+      const res = await fetch(BUSBOY_WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userText, context })
+      });
+      if (!res.ok) throw new Error('Worker returned ' + res.status);
+      const data = await res.json();
+      typingEl.remove();
+      addMessage(data.reply || "Sorry, I couldn't get an answer just now.", 'bot');
+    } catch (err) {
+      typingEl.remove();
+      addMessage("I can't reach my backend yet — the Cloudflare Worker (worker.js) needs to be deployed and BUSBOY_WORKER_URL updated in the code. Try the quick replies above in the meantime!", 'bot');
+      console.warn('BusBoy request failed:', err);
+    }
+  }
+
+  function handleSend() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    addMessage(text, 'user');
+    chatInput.value = '';
+
+    const cached = matchCachedFAQ(text);
+    if (cached) {
+      addMessage(cached, 'bot'); // answered locally — no Worker/API call made
+      return;
+    }
+    sendToBusBoy(text);
+  }
+
+  document.getElementById('chatSend').addEventListener('click', handleSend);
+  chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSend(); });
+</script>
+
+</body>
+</html>
