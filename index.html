@@ -1508,7 +1508,7 @@
       const phaseFraction = i < CALOOCAN_CLUSTER_SIZE ? phaseRand() * 0.12 : phaseRand();
 
       const plate = generatePlate(i);
-      const marker = new maplibregl.Marker({ element: makeBusEl() }).addTo(map);
+      const marker = new maplibregl.Marker({ element: makeBusEl() }).setLngLat(pointAtDistance(0)).addTo(map);
       const popup = new maplibregl.Popup({ offset: 18 });
       marker.setPopup(popup);
       fleet.push({ id: i, plate, baseSpeed, phaseFraction, direction: 1, distanceKm: 0, marker, popup });
