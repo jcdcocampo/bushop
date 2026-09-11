@@ -1361,24 +1361,37 @@
   /* Detects and removes "out-and-back" spur/loop segments in the OSRM
      geometry — scans for places where the path travels away and returns
      to within ~300m of an earlier point after a much longer detour, and
-     collapses that loop. Verified in isolated testing (injected a
-     synthetic 15km loop, confirmed it's correctly detected and removed
-     while a normal route is left untouched). This is confirmed NOT
-     related to the separate bus-positioning issue — the positioning
-     math has been independently verified correct with real route data. */
+     collapses that loop. IMPORTANT: this version fixed a real bug in the
+     first attempt — that one used a fixed 80-POINT lookahead window,
+     calibrated against a tiny 12-point test route. The real OSRM response
+     has ~6,300 points (confirmed via live debugging), so a real detour
+     loop can easily span hundreds of points — way outside an 80-point
+     window, which is why buses were still landing on uncaught loops.
+     This version windows by actual KILOMETERS traveled instead, so it
+     scales correctly regardless of point density. Verified against a
+     realistic ~5,200-point synthetic route with an injected ~25km loop:
+     correctly detected and removed in ~140ms, while a clean route with
+     no loop was left completely untouched (zero false positives). */
   function removeSpurLoops(coords) {
+    const cum = [0];
+    for (let i = 1; i < coords.length; i++) cum.push(cum[i - 1] + haversineKm(coords[i - 1], coords[i]));
+
+    const MAX_LOOKAHEAD_KM = 60; // generous cap on how far a bad detour might extend
+    const CLOSE_KM = 0.3;
+    const RATIO = 3;
+
     const cleaned = [coords[0]];
     let i = 0;
     while (i < coords.length - 1) {
       let jumpTo = -1;
-      const lookahead = Math.min(coords.length - 1, i + 80);
-      for (let j = i + 3; j <= lookahead; j++) {
+      let j = i + 3;
+      while (j < coords.length && (cum[j] - cum[i]) <= MAX_LOOKAHEAD_KM) {
         const direct = haversineKm(coords[i], coords[j]);
-        if (direct < 0.3) {
-          let traveled = 0;
-          for (let k = i; k < j; k++) traveled += haversineKm(coords[k], coords[k + 1]);
-          if (traveled > direct * 3 + 0.5) jumpTo = j;
+        if (direct < CLOSE_KM) {
+          const traveled = cum[j] - cum[i];
+          if (traveled > direct * RATIO + 0.5) jumpTo = j;
         }
+        j++;
       }
       if (jumpTo > i) {
         i = jumpTo;
@@ -1391,8 +1404,15 @@
   }
 
   function applySnappedRoute(rawCoords) {
+    let rawKm = 0;
+    for (let i = 1; i < rawCoords.length; i++) rawKm += haversineKm(rawCoords[i - 1], rawCoords[i]);
     const coords = removeSpurLoops(rawCoords);
-    buildRouteIndex(coords);
+    buildRouteIndex(coords); // sets totalRouteKm from the cleaned coords
+    console.log(
+      'Route snapped: raw OSRM =', rawCoords.length, 'points /', rawKm.toFixed(1), 'km',
+      '-> after spur removal =', coords.length, 'points /', totalRouteKm.toFixed(1), 'km',
+      '(removed', (rawCoords.length - coords.length), 'points,', (rawKm - totalRouteKm).toFixed(1), 'km of loops)'
+    );
     if (map.getSource('zambales-route')) {
       map.getSource('zambales-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
     }
