@@ -1364,25 +1364,43 @@
     const res = await fetch(url);
     const data = await res.json();
     if (data.code === 'Ok' && data.routes && data.routes[0]) {
-      return data.routes[0].geometry.coordinates;
+      return { coords: data.routes[0].geometry.coordinates, distanceKm: data.routes[0].distance / 1000 };
     }
     throw new Error('OSRM returned ' + data.code);
   }
 
   async function fetchFullRouteByLegs(waypoints) {
-    let full = [];
+    // Fetch all 16 legs in parallel instead of one-by-one with a delay
+    // between each — that delay was the actual cause of the slow load,
+    // not anything the OSRM demo server required. A one-time page load
+    // of 16 quick requests is fine sent together; the "be polite" advice
+    // is about sustained heavy use, not this.
+    const legPromises = [];
     for (let i = 0; i < waypoints.length - 1; i++) {
-      try {
-        const leg = await fetchLegRoute(waypoints[i], waypoints[i + 1]);
-        // Skip the first point of each leg after the first — it's the
-        // same point the previous leg already ended on.
-        full = full.concat(i === 0 ? leg : leg.slice(1));
-      } catch (err) {
-        console.warn('Leg ' + i + ' (' + waypoints[i] + ' -> ' + waypoints[i + 1] + ') failed, using a straight line for just this segment.', err);
-        full = full.concat(i === 0 ? [waypoints[i], waypoints[i + 1]] : [waypoints[i + 1]]);
-      }
-      await new Promise(r => setTimeout(r, 250)); // be polite to the free demo server
+      legPromises.push(
+        fetchLegRoute(waypoints[i], waypoints[i + 1])
+          .catch(err => {
+            console.warn('Leg ' + i + ' (' + waypoints[i] + ' -> ' + waypoints[i + 1] + ') failed, using a straight line for just this segment.', err);
+            const straightKm = haversineKm(waypoints[i], waypoints[i + 1]);
+            return { coords: [waypoints[i], waypoints[i + 1]], distanceKm: straightKm };
+          })
+      );
     }
+    const legs = await Promise.all(legPromises);
+
+    // Log each leg's distance individually — if one is way out of line
+    // with what the town-to-town distance should realistically be,
+    // this pinpoints exactly which waypoint pair is causing the problem
+    // instead of only seeing one suspicious total at the end.
+    legs.forEach((leg, i) => {
+      console.log('Leg ' + i + ' (' + waypoints[i].join(',') + ' -> ' + waypoints[i + 1].join(',') + '): ' +
+        leg.distanceKm.toFixed(1) + ' km, ' + leg.coords.length + ' points');
+    });
+
+    let full = [];
+    legs.forEach((leg, i) => {
+      full = full.concat(i === 0 ? leg.coords : leg.coords.slice(1));
+    });
     return full;
   }
 
