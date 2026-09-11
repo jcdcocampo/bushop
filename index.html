@@ -75,7 +75,11 @@
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 3px 10px rgba(255, 59, 48, 0.45), 0 0 0 3px #FFFFFF;
     cursor: pointer;
-    position: relative;
+    /* No `position` or `transform` here. MapLibre positions markers with
+       .maplibregl-marker { position: absolute; top: 0; left: 0 } plus an
+       inline translate(). `position: relative` overrode that, so every bus
+       stacked below the previous one in normal page flow and got pushed
+       further down the map. That was why buses sat in the sea. */
   }
   .bus-marker svg { width: 16px; height: 16px; }
 
@@ -102,7 +106,7 @@
     width: 18px; height: 18px; border-radius: 50%;
     background: var(--accent);
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.25), 0 2px 6px rgba(0,0,0,0.3);
-    position: relative;
+    /* same rule as .bus-marker: no position override */
   }
   .user-marker::after {
     content: "";
@@ -116,8 +120,13 @@
     100% { transform: scale(2.2); opacity: 0; }
   }
 
-  .dest-marker {
-    width: 16px; height: 16px; border-radius: 50% 50% 50% 0;
+  /* The rotation lives on a pseudo-element: MapLibre sets an inline
+     transform on the marker itself, which silently cancelled a rotate()
+     placed here, so the pin never showed its intended teardrop angle. */
+  .dest-marker { width: 16px; height: 16px; }
+  .dest-marker::before {
+    content: ""; position: absolute; inset: 0;
+    border-radius: 50% 50% 50% 0;
     background: #FF3B30;
     transform: rotate(-45deg);
     box-shadow: 0 2px 6px rgba(0,0,0,0.35);
