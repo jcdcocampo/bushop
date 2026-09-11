@@ -843,6 +843,7 @@
   @media (min-width: 701px) {
     .maplibregl-ctrl-top-right { top: 50%; transform: translateY(-50%); }
     .maplibregl-ctrl-top-right .maplibregl-ctrl { margin-top: 0; }
+    .maplibregl-ctrl-top-right .maplibregl-ctrl-attrib { margin-top: 8px; }
     .maplibregl-ctrl-top-right { transition: opacity 0.18s ease; }
     body.chat-open .maplibregl-ctrl-top-right { opacity: 0; pointer-events: none; } /* popover covers that edge */
 
@@ -1566,8 +1567,9 @@
   });
 
   // Mobile: zoom/compass + attribution bottom-right (as before).
-  // Desktop: zoom/compass right-middle (CSS centres the top-right corner),
-  // attribution bottom-left, leaving the bottom-right corner for BusBoy.
+  // Desktop: zoom/compass with the attribution "i" directly under it, as one
+  // group at the right-middle (CSS centres the top-right corner), leaving
+  // the bottom-right corner for BusBoy.
   const DESKTOP_QUERY = window.matchMedia('(min-width: 701px)');
   const navControl = new maplibregl.NavigationControl({ showCompass: true });
   const attributionControl = new maplibregl.AttributionControl({ compact: true });
@@ -1575,9 +1577,34 @@
     const desktop = DESKTOP_QUERY.matches;
     if (map.hasControl(navControl)) map.removeControl(navControl);
     if (map.hasControl(attributionControl)) map.removeControl(attributionControl);
-    map.addControl(attributionControl, desktop ? 'bottom-left' : 'bottom-right');
-    map.addControl(navControl, desktop ? 'top-right' : 'bottom-right');
+    if (desktop) {
+      // stacked in the right-middle column: zoom/tilt, then the map credits
+      map.addControl(navControl, 'top-right');
+      map.addControl(attributionControl, 'top-right');
+      keepAttributionCollapsed();
+    } else {
+      map.addControl(attributionControl, 'bottom-right');
+      map.addControl(navControl, 'bottom-right');
+    }
   }
+  // MapLibre auto-expands compact credits into a full text banner once the
+  // style's attribution text arrives (after load). On desktop, where they sit
+  // under the zoom buttons, undo that first auto-expand so they start as the
+  // small "i". Stops watching as soon as the person clicks it themselves.
+  function keepAttributionCollapsed() {
+    const el = document.querySelector('.maplibregl-ctrl-top-right .maplibregl-ctrl-attrib');
+    if (!el) return;
+    el.classList.remove('maplibregl-compact-show');
+    const obs = new MutationObserver(() => {
+      if (el.classList.contains('maplibregl-compact-show')) {
+        el.classList.remove('maplibregl-compact-show');
+        obs.disconnect();
+      }
+    });
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+    el.addEventListener('click', () => obs.disconnect(), { capture: true, once: true });
+  }
+
   placeMapControls();
   // (updateChatLaunchPosition is defined further down; only call it once the page has run)
   DESKTOP_QUERY.addEventListener('change', () => { placeMapControls(); updateChatLaunchPosition(); });
@@ -2061,12 +2088,15 @@
     const bucket = bucketForHour(getEffectiveHour());
     const count = busCounts[bucket];
 
-    const removed = fleet.filter(b => b.id >= count);
-    if (removed.some(b => b.id === trackedBusId)) stopTracking();
-    removed.forEach(b => b.marker.remove());
-    fleet = fleet.filter(b => b.id < count);
+    // The bus you're tracking/riding is never taken off mid-trip, even if it's
+    // beyond the new count; it's retired once you stop tracking it.
+    const keep = b => b.id < count || b.id === trackedBusId;
+    fleet.filter(b => !keep(b)).forEach(b => b.marker.remove());
+    fleet = fleet.filter(keep);
 
-    for (let i = fleet.length; i < count; i++) {
+    const have = new Set(fleet.map(b => b.id));
+    for (let i = 0; i < count; i++) {
+      if (have.has(i)) continue;
       const speedRand = mulberry32(i * 104729 + 17);
       const baseSpeed = 38 + speedRand() * 12; // deterministic, 38-50 km/h
 
@@ -2081,6 +2111,7 @@
       marker.setPopup(popup);
       fleet.push({ id: i, plate, baseSpeed, phaseFraction, direction: 1, distanceKm: 0, marker, popup });
     }
+    fleet.sort((a, b) => a.id - b.id);
     if (currentBucket !== null && currentBucket !== bucket) updateChatSubtitleLive();
     currentBucket = bucket;
     positionFleet(); // place immediately rather than waiting for the next tick
@@ -2146,7 +2177,8 @@
 
   function maybeRegenerateFleet() {
     const bucket = bucketForHour(getEffectiveHour());
-    if (bucket !== currentBucket) createFleet();
+    const hasRetiredBus = fleet.some(b => b.id >= busCounts[bucket] && b.id !== trackedBusId);
+    if (bucket !== currentBucket || hasRetiredBus) createFleet();
   }
 
   function tick() {
@@ -2285,13 +2317,11 @@
     etaPlateEl.textContent = 'Plate ' + bus.plate;
     if (isRidingBus) {
       const destName = rideTarget ? rideTarget.name : '';
-      const aheadKm = rideTarget ? rideAheadKm(bus) : 0;
-      let text;
-      if (aheadKm < -0.2) text = 'Going the other way'; // boarded a bus heading away; it'll turn back
-      else if (aheadKm < 0.2) text = 'Arriving now';
-      else text = Math.max(1, Math.round((aheadKm / Math.max(bus.baseSpeed * multiplier, 5)) * 60)) + ' min to go';
+      const minsLeft = rideStats ? (rideStats.arrivalSimMs - nowMs()) / 60000 : 0;
+      const headingAway = rideTarget && rideAheadKm(bus) < -ARRIVE_KM; // it'll turn back at the terminus first
+      const text = minsLeft < 1 ? 'Arriving now' : formatDuration(Math.round(minsLeft)) + ' to go';
       etaLabel.textContent = 'Riding · ' + bus.plate;
-      busSheetEtaLabel.textContent = 'Riding to ' + destName;
+      busSheetEtaLabel.textContent = 'Riding to ' + destName + (headingAway ? ' · bus turns back first' : '');
       busSheetEtaValue.textContent = text;
       etaValueEl.textContent = text;
       return;
@@ -2412,8 +2442,27 @@
   // the bus was heading to when you boarded (locked, so it doesn't flip
   // when the bus turns around).
   let rideTarget = null;   // { km, name }
-  let rideStats = null;    // { plate, startSimMs, travelledKm, lastKm }
-  let ridePrevAheadKm = null;
+  let rideStats = null;    // { plate, baseSpeed, startSimMs, arrivalSimMs, lastSimMs }
+
+  // Sim time (ms) when `bus` next reaches canonical km `targetKm` after
+  // `fromMs`. Bus motion is a pure back-and-forth function of time (see
+  // getBusPosition), so this is solved exactly instead of watching ticks —
+  // arrival can't be skipped by fast-forwarding, jumping the Time field,
+  // or a background tab pausing timers.
+  function nextPassTimeMs(bus, targetKm, fromMs) {
+    const P = (2 * totalRouteKm) / bus.baseSpeed; // round trip, hours
+    const half = P / 2;
+    const u = ((fromMs / 3600000 + bus.phaseFraction * P) % P + P) % P;
+    const x = Math.max(0, Math.min(totalRouteKm, targetKm));
+    const passes = [(x / totalRouteKm) * half, half + ((totalRouteKm - x) / totalRouteKm) * half];
+    let wait = Infinity;
+    passes.forEach(p => {
+      let d = ((p - u) % P + P) % P;
+      if (d < 1e-9) d += P; // "already there" at boarding counts as the next pass
+      wait = Math.min(wait, d);
+    });
+    return fromMs + wait * 3600000;
+  }
 
   function computeRideTarget(bus) {
     if (destinationCoord) return { km: distanceAlongRouteForCoord(destinationCoord), name: destinationInput.value };
@@ -2423,32 +2472,31 @@
   function rideAheadKm(bus) { return (rideTarget.km - bus.distanceKm) * bus.direction; }
 
   function updateRide(bus) {
-    const busPt = pointAtDistance(bus.distanceKm);
-    originCoord = busPt;
-    if (originMarker) originMarker.setLngLat(busPt).setOffset(RIDING_PIN_OFFSET);
-    if (rideStats) {
-      rideStats.travelledKm += Math.abs(bus.distanceKm - rideStats.lastKm);
-      rideStats.lastKm = bus.distanceKm;
+    const now = nowMs();
+    if (rideStats && now < rideStats.lastSimMs) {
+      // Time was set backwards in Dev Mode: treat it as boarding again from here.
+      rideStats.startSimMs = now;
+      rideStats.arrivalSimMs = nextPassTimeMs(bus, rideTarget.km, now);
     }
-    // Arrival = the stop went from "ahead" to "reached or just passed" since
-    // the last update. Checking a crossing (not just "is it close") matters
-    // when fast-forwarding, where one update can move a bus ~2 km.
-    const ahead = rideAheadKm(bus);
-    if (ridePrevAheadKm !== null && ridePrevAheadKm > ARRIVE_KM && ahead <= ARRIVE_KM) {
+    if (rideStats) rideStats.lastSimMs = now;
+    if (rideStats && now >= rideStats.arrivalSimMs) {
       arriveAtDestination(bus);
       return;
     }
-    ridePrevAheadKm = ahead;
+    const busPt = pointAtDistance(bus.distanceKm);
+    originCoord = busPt;
+    if (originMarker) originMarker.setLngLat(busPt).setOffset(RIDING_PIN_OFFSET);
     drawMyTripLine();
   }
 
   function arriveAtDestination(bus) {
     const target = rideTarget;
     const stats = rideStats;
-    // Don't count the bit the bus rolled past the stop before we noticed.
-    const overshootKm = Math.max(0, -rideAheadKm(bus));
-    const km = Math.max(0, stats.travelledKm - overshootKm);
-    const minutes = Math.max(1, Math.round((nowMs() - stats.startSimMs) / 60000 - (overshootKm / bus.baseSpeed) * 60));
+    // Exact figures from the solved arrival time (the bus moves at a constant
+    // baseSpeed along the route), not from however the ticks happened to land.
+    const rideHours = Math.max(0, stats.arrivalSimMs - stats.startSimMs) / 3600000;
+    const km = rideHours * stats.baseSpeed;
+    const minutes = Math.max(1, Math.round(rideHours * 60));
     stopTracking(); // ends the ride and closes the bus sheet: you've gotten off
     // Put you exactly at your stop (the bus may have rolled slightly past it).
     const stopPt = pointAtDistance(target.km);
@@ -2568,8 +2616,9 @@
       }
       locationInput.value = 'On bus ' + bus.plate;
       rideTarget = computeRideTarget(bus);
-      rideStats = { plate: bus.plate, startSimMs: nowMs(), travelledKm: 0, lastKm: bus.distanceKm };
-      ridePrevAheadKm = null;
+      const boardMs = nowMs();
+      rideStats = { plate: bus.plate, baseSpeed: bus.baseSpeed, startSimMs: boardMs, lastSimMs: boardMs,
+                    arrivalSimMs: nextPassTimeMs(bus, rideTarget.km, boardMs) };
       updateRide(bus);
     } else {
       if (map.getLayer('zambales-route-line')) {
@@ -2583,7 +2632,7 @@
       if (originCoord) locationInput.value = 'Current Location (simulated)';
       busSheetEtaLabel.textContent = 'Estimated arrival';
       busSheetGetDirectionsBtn.classList.remove('hidden');
-      rideTarget = null; rideStats = null; ridePrevAheadKm = null;
+      rideTarget = null; rideStats = null;
     }
   }
 
@@ -2943,7 +2992,10 @@
     destinationInput.value = name;
     if (isRidingBus) {
       const ridden = fleet.find(b => b.id === trackedBusId);
-      if (ridden) { rideTarget = computeRideTarget(ridden); ridePrevAheadKm = rideAheadKm(ridden); }
+      if (ridden && rideStats) {
+        rideTarget = computeRideTarget(ridden);
+        rideStats.arrivalSimMs = nextPassTimeMs(ridden, rideTarget.km, nowMs());
+      }
     }
     if (destinationMarker) destinationMarker.remove();
     destinationMarker = new maplibregl.Marker({ element: makeDestEl() }).setLngLat(coord).addTo(map);
