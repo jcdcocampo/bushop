@@ -931,10 +931,30 @@
     .chat-input-row input, .field input { font-size: 16px; } /* under 16px, iOS zooms the page on focus */
   }
   @media (max-width: 700px) {
-    /* Track the visual viewport so the chat sheet sits on top of the on-screen keyboard
-       (iOS Safari doesn't resize the page for the keyboard; the vars are set in the script). */
-    .chat-overlay { top: var(--vv-top, 0px); bottom: auto; height: var(--vv-height, 100%); }
-    .chat-sheet { max-height: min(82vh, calc(var(--vv-height, 100vh) - 10px)); }
+    /* The overlay follows the *visible* part of the screen (--vv-* are set by the
+       script from window.visualViewport). iOS Safari doesn't shrink the page when the
+       keyboard opens — it pans the visible area instead — so without this the card
+       would sit behind the keyboard. */
+    .chat-overlay { top: 0; bottom: auto; height: var(--vv-height, 100%); transform: translateY(var(--vv-top, 0px)); }
+    /* Fixed height (not sized to its content) so the card never jumps as messages
+       arrive; only the message list flexes. */
+    .chat-sheet { height: min(640px, calc(var(--vv-height, 100vh) - 64px)); max-height: none; }
+    .chat-messages { min-height: 0; }
+    /* Keyboard up: use all the space above it, and compact the greeting. */
+    html.keyboard-open .chat-sheet { height: calc(var(--vv-height, 100vh) - 6px); border-radius: 18px 18px 0 0; padding-bottom: 0; }
+    html.keyboard-open .busboy-hero-icon,
+    html.keyboard-open .busboy-hero-hint,
+    html.keyboard-open .busboy-hero-traffic { display: none; }
+    html.keyboard-open .busboy-hero { padding-top: 8px; }
+    html.keyboard-open .busboy-hero-title { font-size: 18px; }
+    html.keyboard-open .busboy-hero-sub { font-size: 13px; }
+  }
+  @media (max-width: 700px) and (hover: none) and (pointer: coarse) {
+    /* Phones: fade the card in where it will sit instead of sliding it up from below the
+       screen. Focusing the chat box while it's still off-screen made the browser scroll
+       the page to reveal it, fighting the slide animation. */
+    .chat-sheet { transform: none; opacity: 0; transition: opacity 0.2s ease; }
+    .chat-overlay.open .chat-sheet { transform: none; opacity: 1; }
   }
 
   /* ---------- DESKTOP (matches DESKTOP_QUERY in the script) ----------
@@ -4097,6 +4117,7 @@
   }
 
   function closeChat() {
+    chatInput.blur(); // on iPhones tapping a button doesn't dismiss the keyboard by itself
     chatOverlay.classList.remove('open');
     document.body.classList.remove('chat-open');
     chatLaunchBtn.classList.remove('is-open');
@@ -4120,12 +4141,33 @@
   (function trackVisualViewport() {
     const vv = window.visualViewport;
     if (!vv) return;
+    const root = document.documentElement;
+    let keyboardWasOpen = false;
+    // Real device orientation. Not the visible area's shape: with the keyboard up, a small
+    // phone's visible area can be wider than tall while the phone is still upright.
+    const deviceIsLandscape = () => {
+      if (screen.orientation && screen.orientation.type) return screen.orientation.type.startsWith('landscape');
+      if (typeof window.orientation === 'number') return Math.abs(window.orientation) === 90; // older iOS
+      return screen.width > screen.height;
+    };
     const sync = () => {
-      document.documentElement.style.setProperty('--vv-height', Math.round(vv.height) + 'px');
-      document.documentElement.style.setProperty('--vv-top', Math.round(vv.offsetTop) + 'px');
+      root.style.setProperty('--vv-height', Math.round(vv.height) + 'px');
+      root.style.setProperty('--vv-top', Math.round(vv.offsetTop) + 'px');
+      // Keyboard = the visible area is well under the phone's screen height (browser
+      // toolbars take ~10-20%, a keyboard ~40-55%). Uses the screen's short or long side
+      // depending on orientation, because iOS doesn't swap screen.width/height on rotation.
+      const screenH = deviceIsLandscape() ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+      const keyboardOpen = window.matchMedia('(hover: none) and (pointer: coarse)').matches && vv.height < screenH * 0.72;
+      root.classList.toggle('keyboard-open', keyboardOpen);
+      if (chatOverlay.classList.contains('open')) {
+        if (window.scrollY || window.scrollX) window.scrollTo(0, 0); // undo iOS "scroll to reveal input"
+        if (keyboardOpen !== keyboardWasOpen) chatMessages.scrollTop = chatMessages.scrollHeight; // keep latest reply in view
+      }
+      keyboardWasOpen = keyboardOpen;
     };
     vv.addEventListener('resize', sync);
     vv.addEventListener('scroll', sync);
+    window.addEventListener('orientationchange', () => setTimeout(sync, 300));
     sync();
   })();
   document.getElementById('chatLaunchBtn').addEventListener('click', () => {
