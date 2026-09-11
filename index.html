@@ -319,7 +319,12 @@
   .board-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
   .board-btn:active { background: #EEF4FF; }
   @media (max-width: 360px) { .board-btn span { display: none; } }
+  .recenter-ctrl button svg { width: 18px; height: 18px; display: block; margin: auto; color: #333; }
+  .recenter-ctrl button.hidden { display: none; }
+  .recenter-ctrl #recenterBus svg { color: var(--accent); }
   .sheet-btn-row { display: flex; gap: 8px; margin: -2px 0 12px; }
+  .board-modes { display: flex; gap: 6px; margin: 2px 0 8px; }
+  .board-modes .mode-btn { padding: 8px 4px; }
   .sheet-btn {
     flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 8px;
     border: 1.5px solid rgba(0, 122, 255, 0.35); border-radius: var(--radius-pill); background: #FFFFFF;
@@ -1298,7 +1303,7 @@
       <div class="bus-sheet-directions-section hidden" id="busSheetDirectionsSection">
         <div class="bus-sheet-mode-picker">
           <button class="mode-btn active" data-mode="foot" type="button">🚶 Walk</button>
-          <button class="mode-btn" data-mode="motorcycle" type="button">🏍️ Habal-habal</button>
+          <button class="mode-btn" data-mode="motorcycle" type="button">🏍️ Motorcycle</button>
           <button class="mode-btn" data-mode="car" type="button">🚗 Ride</button>
         </div>
         <button class="btn-primary" id="busSheetGuide" style="width:100%; margin-bottom:10px;">Recalculate Route</button>
@@ -2189,19 +2194,52 @@
   const DESKTOP_QUERY = window.matchMedia('(min-width: 701px)');
   const navControl = new maplibregl.NavigationControl({ showCompass: true });
   const attributionControl = new maplibregl.AttributionControl({ compact: true });
+  // Recenter: on my location, and on the bus being tracked (shown only while tracking).
+  // Sits with the zoom/compass buttons so all camera controls are in one place.
+  const recenterControl = {
+    onAdd() {
+      const box = document.createElement('div');
+      box.className = 'maplibregl-ctrl maplibregl-ctrl-group recenter-ctrl';
+      box.innerHTML =
+        '<button type="button" id="recenterMe" title="Recenter on my location" aria-label="Recenter on my location">' +
+          '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>' +
+        '<button type="button" id="recenterBus" class="hidden" title="Recenter on the bus I\u2019m tracking" aria-label="Recenter on the bus I\u2019m tracking">' +
+          '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="4" width="14" height="13" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M5 11h14" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor"/><circle cx="15.5" cy="14" r="1.1" fill="currentColor"/><path d="M8 17v2.5M16 17v2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>';
+      box.querySelector('#recenterMe').addEventListener('click', recenterOnMe);
+      box.querySelector('#recenterBus').addEventListener('click', recenterOnBus);
+      this._box = box;
+      return box;
+    },
+    onRemove() { this._box.remove(); }
+  };
+  function recenterOnMe() {
+    if (!originCoord) { showModeToast('Set your location first'); return; }
+    map.easeTo({ center: originCoord, zoom: Math.max(map.getZoom(), 14), duration: 700 });
+  }
+  function recenterOnBus() {
+    const bus = trackedBusId !== null ? busById(trackedBusId) : null;
+    if (!bus) return;
+    map.easeTo({ center: bus.lngLat, zoom: Math.max(map.getZoom(), 13), duration: 700 });
+  }
   function placeMapControls() {
     const desktop = DESKTOP_QUERY.matches;
     if (map.hasControl(navControl)) map.removeControl(navControl);
+    if (map.hasControl(recenterControl)) map.removeControl(recenterControl);
     if (map.hasControl(attributionControl)) map.removeControl(attributionControl);
     if (desktop) {
-      // stacked in the right-middle column: zoom/tilt, then the map credits
+      // stacked in the right-middle column: zoom/tilt, recenter, then the map credits
       map.addControl(navControl, 'top-right');
+      map.addControl(recenterControl, 'top-right');
       map.addControl(attributionControl, 'top-right');
       keepAttributionCollapsed();
     } else {
       map.addControl(attributionControl, 'bottom-right');
       map.addControl(navControl, 'bottom-right');
+      map.addControl(recenterControl, 'bottom-right');
     }
+    // re-show the tracked-bus button if controls were re-placed mid-tracking (deferred: this also runs at startup,
+    // before trackedBusId exists)
+    setTimeout(() => { try { syncTrackingUI(); } catch (e) { /* not ready yet */ } }, 0);
   }
   // MapLibre auto-expands compact credits into a full text banner once the
   // style's attribution text arrives (after load). On desktop, where they sit
@@ -3140,6 +3178,8 @@
   function syncTrackingUI() {
     const tracking = trackedBusId !== null;
     document.body.classList.toggle('tracking-active', tracking);
+    const rb = document.getElementById('recenterBus');
+    if (rb) rb.classList.toggle('hidden', !tracking);
     if (tracking) autocompleteList.classList.add('hidden');
     if (typeof updateChatLaunchPosition === 'function') updateChatLaunchPosition();
   }
@@ -3585,7 +3625,7 @@
      ========================================================= */
   const ASSUMED_SPEED_KMH = { foot: 4.5, motorcycle: 30, car: 22 };
   const MODE_OSRM_PROFILE = { foot: 'foot', motorcycle: 'driving', car: 'driving' };
-  const MODE_LABEL = { foot: 'on foot', motorcycle: 'by habal-habal', car: 'by car' };
+  const MODE_LABEL = { foot: 'on foot', motorcycle: 'by motorcycle', car: 'by car' };
 
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -4195,34 +4235,47 @@
     return { bus, routes: placeRelation(point).lines.length ? placeRelation(point).lines : routes, point, where, station, busEta, from, straightKm: haversineKm(from, point) };
   }
   function renderBoarding(plan, walk) {
+    const mode = (boardState && boardState.mode) || 'foot';
     const km = walk ? walk.km : plan.straightKm * 1.3; // streets are ~30% longer than a straight line
-    const mins = Math.max(1, Math.round(km / WALK_KMH * 60));
+    const mins = Math.max(1, Math.round(km / ASSUMED_SPEED_KMH[mode] * 60));
+    const verb = { foot: 'walk', motorcycle: 'by motorcycle', car: 'by car' }[mode];
     const dist = km < 1 ? Math.round(km * 100) * 10 + ' m' : km.toFixed(1) + ' km';
     const lines = lineNamesOf(plan.routes).map(n => lineDot(ROUTES.find(r => r.name === n)) + n).join(' · ');
     const distText = plan.straightKm < 0.05 ? '<b>You’re right there</b>'
-      : plan.straightKm > 3 ? '<b>' + plan.straightKm.toFixed(1) + ' km</b> away · too far to walk'
-      : '<b>' + dist + '</b> · ~' + formatDuration(mins) + ' walk' + (walk ? '' : ' (estimate)');
+      : mode === 'foot' && plan.straightKm > 3 ? '<b>' + plan.straightKm.toFixed(1) + ' km</b> away · too far to walk'
+      : '<b>' + dist + '</b> · ~' + formatDuration(mins) + ' ' + verb + (walk ? '' : ' (estimate)');
+    // Mode buttons are built once and kept (rebuilding them every refresh made taps miss on phones);
+    // only the text below them is updated.
+    if (!boardInfoEl.querySelector('.board-modes')) {
+      boardInfoEl.innerHTML = '<div class="board-modes">' + [['foot', '🚶 Walk'], ['motorcycle', '🏍️ Motorcycle'], ['car', '🚗 Ride']]
+        .map(([m, label]) => '<button type="button" class="mode-btn board-mode" data-board-mode="' + m + '">' + label + '</button>').join('') +
+        '</div><div class="board-content"></div>';
+    }
+    boardInfoEl.querySelectorAll('.board-mode').forEach(b => b.classList.toggle('active', b.dataset.boardMode === mode));
     let html = '<div class="board-place">' + escapeHtml(plan.station ? plan.station.name : plan.where.road + ' in ' + plan.where.town) +
       '<br><span style="font-size:12px;font-weight:500;color:var(--text-secondary)">' + escapeHtml(plan.where.road + ', ' + plan.where.town + ', ' + plan.where.province) + '</span></div>';
-    if (plan.straightKm > 1.5) html += '<div class="board-note">' + (plan.straightKm > 3 ? 'Take a tricycle or jeep to the highway.' : 'That’s a long walk — a tricycle or jeep is easier.') + '</div>';
+    if (mode === 'foot' && plan.straightKm > 1.5) html += '<div class="board-note">' + (plan.straightKm > 3 ? 'Too far to walk — try Motorcycle or Ride.' : 'That’s a long walk — a motorcycle or ride is easier.') + '</div>';
     html += '<div class="board-row"><span class="board-k">From you</span><span>' + distText + '</span></div>';
     html += '<div class="board-row"><span class="board-k">This bus</span><span><b>' + escapeHtml(plan.bus.plate) + '</b> · ' +
       (plan.busEta === null ? 'not heading there' : plan.busEta < 1 ? 'arriving now' : 'there in ' + formatDuration(Math.round(plan.busEta))) + '</span></div>';
     html += '<div class="board-row"><span class="board-k">Lines here</span><span>' + lines + '</span></div>';
-    boardInfoEl.innerHTML = html;
+    const content = boardInfoEl.querySelector('.board-content');
+    if (content.innerHTML !== html) content.innerHTML = html;
     boardInfoEl.classList.remove('hidden');
   }
   // Shows the boarding point inside the tracking card (and on the map). Cleared by Stop Tracking.
   function showBoardingPoint(fromCoord) {
     const from = fromCoord || (trackedTrip ? null : originCoord);
+    const keepMode = boardState && boardState.mode;
     clearBoardingPoint();
     const plan = boardingPlan(from);
+    if (keepMode) boardState = { mode: keepMode };
     if (!plan) {
       boardInfoEl.innerHTML = '<div class="board-note" style="color:var(--text-secondary);padding-bottom:8px">Set your location first so I can find where to board.</div>';
       boardInfoEl.classList.remove('hidden');
       return;
     }
-    boardState = { from: plan.from, walk: null };
+    boardState = { from: plan.from, walk: null, mode: (boardState && boardState.mode) || 'foot', point: plan.point };
     boardBtn.classList.add('active');
     renderBoarding(plan, null);
     const el = document.createElement('div');
@@ -4241,19 +4294,37 @@
     };
     drawWalk([plan.from, plan.point]);
     map.fitBounds(new maplibregl.LngLatBounds(plan.from, plan.from).extend(plan.point), { padding: { top: 100, bottom: 460, left: 60, right: 60 }, maxZoom: 16 });
-    const seq = boardRequestSeq;
-    if (plan.straightKm > 0.03 && plan.straightKm < 8) {
-      fetch('https://router.project-osrm.org/route/v1/foot/' + plan.from[0] + ',' + plan.from[1] + ';' + plan.point[0] + ',' + plan.point[1] + '?overview=full&geometries=geojson')
-        .then(r => r.json()).then(data => {
-          if (seq !== boardRequestSeq || data.code !== 'Ok' || !data.routes[0]) return;
-          const walkKm = data.routes[0].distance / 1000;
-          if (walkKm > plan.straightKm * 4 + 1) return; // implausible detour: keep the estimate
-          drawWalk([plan.from].concat(data.routes[0].geometry.coordinates, [plan.point]));
-          boardState.walk = { km: walkKm };
-          renderBoarding(boardingPlan(boardState.from) || plan, boardState.walk);
-        }).catch(() => {});
-    }
+    fetchBoardingRoute(plan, drawWalk);
   }
+  // Road route to the boarding point for the chosen mode (walking path, or roads for motorcycle/ride).
+  function fetchBoardingRoute(plan, drawLine) {
+    const seq = ++boardRequestSeq;
+    const mode = boardState.mode || 'foot';
+    const maxKm = mode === 'foot' ? 8 : 60;
+    if (!(plan.straightKm > 0.03 && plan.straightKm < maxKm)) return;
+    fetch('https://router.project-osrm.org/route/v1/' + MODE_OSRM_PROFILE[mode] + '/' + plan.from[0] + ',' + plan.from[1] + ';' + plan.point[0] + ',' + plan.point[1] + '?overview=full&geometries=geojson')
+      .then(r => r.json()).then(data => {
+        if (seq !== boardRequestSeq || !boardState || data.code !== 'Ok' || !data.routes[0]) return;
+        const km = data.routes[0].distance / 1000;
+        if (km > plan.straightKm * 4 + 1) return; // implausible detour: keep the estimate
+        drawLine([plan.from].concat(data.routes[0].geometry.coordinates, [plan.point]));
+        boardState.walk = { km };
+        renderBoarding(boardingPlan(boardState.from) || plan, boardState.walk);
+      }).catch(() => {});
+  }
+  // Walk / Motorcycle / Ride buttons inside the boarding panel
+  document.getElementById('busSheetBoardInfo').addEventListener('click', e => {
+    const btn = e.target.closest('[data-board-mode]');
+    if (!btn || !boardState || boardState.mode === btn.dataset.boardMode) return;
+    boardState.mode = btn.dataset.boardMode;
+    boardState.walk = null;
+    const plan = boardingPlan(boardState.from);
+    if (!plan) return;
+    renderBoarding(plan, null);
+    const src = map.getSource('board-walk');
+    fetchBoardingRoute(plan, coords => { if (map.getSource('board-walk')) map.getSource('board-walk').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }); });
+    if (map.getLayer('board-walk-line')) map.setPaintProperty('board-walk-line', 'line-dasharray', boardState.mode === 'foot' ? [0.1, 1.8] : [2, 1.2]);
+  });
   // keep "This bus · there in N min" live while the card is open
   function refreshBoardingInfo() {
     if (!boardState) return;
