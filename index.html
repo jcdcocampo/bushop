@@ -1114,10 +1114,10 @@
      ========================================================= */
   const LANDMARKS = [
     // --- Terminals (also searchable) ---
-    { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9040, 15.7700] },
+    { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9103, 15.7700] },
     { name: 'Iba Terminal', note: 'Brgy. Palanginan, Iba', coord: [119.9945, 15.3139] },
     { name: 'Olongapo Terminal', note: 'Anonas St., West Bajac-Bajac', coord: [120.2857, 14.8366] },
-    { name: 'San Fernando Terminal', note: 'Pampanga', coord: [120.6900, 15.0286] },
+    { name: 'San Fernando Terminal', note: 'Pampanga', coord: [120.6958, 15.0302] },
     { name: 'Caloocan Terminal', note: 'Rizal Ave. Ext., Grace Park West', coord: [120.9836, 14.6555] },
     { name: 'Cubao Terminal', note: 'Manila-side boarding point', coord: [121.0538, 14.6197] },
     { name: 'Pasay Terminal', note: 'Manila-side boarding point', coord: [121.0011, 14.5453] },
@@ -1191,42 +1191,146 @@
   // town-center estimates since no street address was published for them.
   const MAJOR_TERMINALS = [
     { name: 'Caloocan Terminal', note: 'Rizal Ave. Ext., Grace Park West', coord: [120.9836, 14.6555] },
-    { name: 'San Fernando Terminal', note: 'Pampanga', coord: [120.6900, 15.0286] },
+    { name: 'San Fernando Terminal', note: 'Pampanga', coord: [120.6958, 15.0302] },
     { name: 'Olongapo Terminal', note: 'Anonas St., West Bajac-Bajac', coord: [120.2857, 14.8366] },
     { name: 'Iba Terminal', note: 'Brgy. Palanginan, provincial capital', coord: [119.9945, 15.3139] },
-    { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9040, 15.7700] }
+    { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9103, 15.7700] }
   ];
 
   /* =========================================================
-     MAP
-     Route waypoints follow the Zambales Line's "Inner Cities" path
-     (Caloocan -> Guiguinto -> San Fernando -> Dinalupihan -> Olongapo
-     -> up the coast to Sta. Cruz). Reverted to this version after
-     the last attempt (removing Guiguinto, tightening snap radius)
-     made things worse rather than better.
+     MAP — ROUTE ANCHORS
+     The old 19 "town centre" waypoints were the real cause of the
+     scattered buses: several weren't on the highway at all (San Antonio
+     was ~17 km inland in the mountains, Botolan was in the sea, and
+     Masinloc/Candelaria were in the wrong order), so OSRM faithfully
+     routed huge detours to reach them.
+
+     Every anchor below (except the terminals and one connector) is a
+     DPWH national bridge, taken from the DPWH Road & Bridge Inventory
+     that DPWH released to OpenStreetMap Philippines (OSMPH/dpwh_bridges).
+     A bridge is physically ON its road, so these points are on the
+     actual bus corridor by construction:
+       MacArthur Hwy (Caloocan -> San Fernando)
+       Jose Abad Santos Ave / JASA (San Fernando -> Lubao -> Dinalupihan -> Olongapo)
+       Olongapo-Bugallon Rd (Olongapo -> Subic -> ... -> Iba -> ... -> Sta. Cruz)
+     Anchors are ~2 km apart (max 7.5 km), so even as straight lines
+     the route stays on the corridor. OSRM is only used to add road
+     curvature *between* neighbouring anchors, and each leg it returns
+     is validated (see ROUTE SNAPPING).
+     'winding' marks the leg ENDING at that anchor as a known mountain
+     road (DPWH stations show 5.3 km of road over a 1.7 km gap).
      ========================================================= */
-  const ZAMBALES_ROUTE = [
-    [120.9836, 14.6555], // Caloocan (southern terminus)
-    [120.9500, 14.7320], // Meycauayan, Bulacan — forces northward from Caloocan
-    [120.8823, 14.8524], // Guiguinto, Bulacan
-    [120.8130, 14.8430], // Malolos, Bulacan — forces the main highway corridor,
-                         // prevents the massive eastern detour through Baliwag/Apalit
-    [120.6900, 15.0286], // San Fernando, Pampanga
-    [120.4694, 14.8762], // Dinalupihan, Bataan
-    [120.2857, 14.8366], // Olongapo City
-    [120.2400, 14.8781], // Subic
-    [120.1936, 14.9257], // Castillejos
-    [120.1592, 15.0000], // San Marcelino
-    [120.1444, 15.0958], // San Antonio
-    [120.0850, 15.0500], // San Narciso
-    [120.0500, 15.0900], // San Felipe
-    [119.9600, 15.2800], // Botolan
-    [119.9945, 15.3139], // Iba
-    [119.9040, 15.4350], // Palauig
-    [119.8800, 15.5300], // Candelaria
-    [119.9330, 15.5900], // Masinloc
-    [119.9040, 15.7700]  // Sta. Cruz (northern terminus)
+  const ROUTE_ANCHORS = [
+    [120.98360, 14.65550], // Caloocan Terminal (Rizal Ave Ext / Monumento)
+    [120.98208, 14.67050], // Tullahan Br - MacArthur Hwy
+    [120.96526, 14.69249], // Malinta Br - Valenzuela
+    [120.96136, 14.73026], // Meycauayan Br
+    [120.94997, 14.76050], // Marilao Br
+    [120.93211, 14.79020], // Bunlo Br - Bocaue
+    [120.92969, 14.79637], // Bocaue Flyover
+    [120.92817, 14.79840], // Bocaue Br
+    [120.90797, 14.81712], // Balagtas Br
+    [120.89670, 14.82610], // Ugong Br - Guiguinto
+    [120.87690, 14.82814], // Guiguinto Br
+    [120.86320, 14.83666], // Tabang Br
+    [120.85974, 14.83912], // Tikay Br - Malolos
+    [120.83420, 14.84590], // Dakila Br
+    [120.81790, 14.85132], // Catmon Br
+    [120.81679, 14.85200], // Malolos Flyover
+    [120.80397, 14.86617], // Bulihan Br
+    [120.77216, 14.90104], // Labangan Br 1 - Calumpit
+    [120.76694, 14.90780], // Labangan Br 7
+    [120.76587, 14.91894], // Calumpit Br
+    [120.76008, 14.93377], // Sulipan Br - Apalit
+    [120.75840, 14.95686], // Are Br - Apalit
+    [120.75182, 14.98328], // Tulauc Br - San Simon
+    [120.73904, 14.99529], // Sto. Domingo Br - Minalin
+    [120.73025, 14.99940], // Tiaong Br - Sto. Tomas
+    [120.71869, 15.00479], // Dalaquitan Br
+    [120.69725, 15.02772], // Tinajero Br - San Fernando
+    [120.69443, 15.03278], // Del Pilar Br
+    [120.68163, 15.03976], // JASA/MacArthur Flyover
+    [120.67882, 15.03648], // RR Crossing Br - JASA
+    [120.67449, 15.02881], // Palawe Br
+    [120.67143, 15.02405], // Magliman Br
+    [120.65670, 15.01154], // Gugu Br - Bacolor
+    [120.63968, 14.99837], // Sta. Barbara Br
+    [120.62791, 14.98881], // San Matias Br - Guagua
+    [120.61367, 14.97721], // Natividad Br
+    [120.59110, 14.93523], // San Antonio Br - Lubao
+    [120.57669, 14.91961], // Remedios Br
+    [120.57228, 14.91679], // Sta. Cruz Br 1
+    [120.56367, 14.91127], // Sta. Cruz Br 2
+    [120.55217, 14.90389], // Palcarangan Br
+    [120.53438, 14.89252], // Lauc Pao Br
+    [120.52323, 14.88537], // San Isidro Br
+    [120.49983, 14.87032], // Prado Br
+    [120.48136, 14.85848], // Balsik Br 2
+    [120.47634, 14.85524], // Layac Br 1 - Dinalupihan
+    [120.47210, 14.85771], // Tabacan Br
+    [120.45449, 14.86647], // Dila-Dila Br
+    [120.43910, 14.86022], // Saguing Br
+    [120.43495, 14.85750], // Tue Br
+    [120.38516, 14.85172], // Pinulot Br
+    [120.36449, 14.84758], // Cucubog Br
+    [120.33888, 14.84678], // Bangal Br - Olongapo
+    [120.31205, 14.84872], // Cabalan Br
+    [120.28570, 14.83660], // Olongapo Terminal
+    [120.28184, 14.83951], // Kalaklan Br - Olongapo-Bugallon Rd
+    [120.26809, 14.84709, 'winding'], // Maquinaya Br
+    [120.25447, 14.85184], // Matain Br 1 - Subic
+    [120.23881, 14.86188], // Calapacuan Br
+    [120.23495, 14.87652], // Calapandayan Br
+    [120.22849, 14.91384], // Aningway Br
+    [120.22711, 14.91888], // Sacatihan Br
+    [120.22192, 14.92305], // Talos Br
+    [120.21718, 14.92581], // Pamatawan Br - Castillejos
+    [120.18199, 14.94909], // Bulala Br
+    [120.18067, 14.95015], // Camachile Br
+    [120.16000, 14.97090], // San Marcelino (on hwy line)
+    [120.14504, 14.98598], // Consuelo Br
+    [120.08024, 15.01002], // Palayas Br - San Narciso
+    [120.07771, 15.02426], // Alusiis Br
+    [120.07590, 15.03369], // Maculcol Br - San Felipe
+    [120.07409, 15.04426], // Gabor Br
+    [120.06776, 15.07034], // Sto. Tomas Br
+    [120.06659, 15.07938], // Sindol Br
+    [120.06255, 15.11613], // Maloma Br
+    [120.05985, 15.12468], // Anonang Br - Cabangan
+    [120.05650, 15.13367], // Longos Br
+    [120.05319, 15.15385], // Sto. Nino Br
+    [120.05157, 15.17301], // Sta. Rita Br
+    [120.04280, 15.18507], // Apo-Apo Br
+    [120.03728, 15.19219], // Kiling Br
+    [120.03080, 15.20274], // Dalayap Br 2
+    [120.02785, 15.21132], // Panan Br - Botolan
+    [120.03711, 15.26213], // Bucao Br
+    [120.03411, 15.28002], // Carael Br
+    [120.02584, 15.28830], // Batonlapoc Br
+    [120.00531, 15.30575], // Mambog Br
+    [120.00025, 15.30942], // Bancal Br
+    [119.99450, 15.31390], // Iba Terminal
+    [119.98632, 15.32122], // Palanginan Br - Iba
+    [119.96908, 15.32762], // Panibuatan Br
+    [119.96965, 15.34332], // Bangantalinga Br
+    [119.95642, 15.37358], // Dampay Br
+    [119.95552, 15.38724], // Marangla Br - Palauig
+    [119.94969, 15.43055], // Banlog Br
+    [119.95471, 15.45559], // Salaza Br
+    [119.96120, 15.48076], // San Lorenzo Br - Masinloc
+    [119.96147, 15.49042], // Sto. Rosario Br
+    [119.94980, 15.54680], // Baloganon Br
+    [119.94256, 15.59569], // Lawis Br 1 - Candelaria
+    [119.93952, 15.60335], // Yamot Br
+    [119.93507, 15.63112], // San Vicente Br
+    [119.94086, 15.68184], // Uacon Br
+    [119.93512, 15.69245], // Lucapon Br - Sta. Cruz
+    [119.90987, 15.71990], // Bayto Br
+    [119.90878, 15.74419], // Pamalabuwan Br
+    [119.91121, 15.75903], // Lipay Br
+    [119.91030, 15.77000]  // Sta. Cruz Terminal (on hwy)
   ];
+  const OLONGAPO_TERMINAL_COORD = [120.2857, 14.8366];
   const CORRIDOR_BOUNDS = [[119.55, 14.30], [121.20, 16.00]];
 
   const map = new maplibregl.Map({
@@ -1249,14 +1353,14 @@
   map.on('load', () => {
     map.addSource('zambales-route', {
       type: 'geojson',
-      data: { type: 'Feature', geometry: { type: 'LineString', coordinates: ZAMBALES_ROUTE } }
+      data: { type: 'Feature', geometry: { type: 'LineString', coordinates: ROUTE_COORDS } }
     });
-    // Starts dashed/faint-red (approximate) and switches to solid once
-    // OSRM confirms real road-snapped geometry — see applySnappedRoute().
+    // Solid from the start: the anchor polyline is already on the real
+    // corridor. applySnappedRoute() only refines curvature between anchors.
     map.addLayer({
       id: 'zambales-route-line', type: 'line', source: 'zambales-route',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#FF6961', 'line-width': 4, 'line-opacity': 0.55, 'line-dasharray': [2, 1.5] }
+      paint: { 'line-color': '#FF6961', 'line-width': 4, 'line-opacity': 0.55 }
     });
 
     // Fix #1: mark all 5 major terminals distinctly, not just the endpoints.
@@ -1268,6 +1372,7 @@
     });
 
     createFleet();
+    initRouteGeometry();
   });
 
   function makeTerminalEl() { const el = document.createElement('div'); el.className = 'terminal-marker'; return el; }
@@ -1295,134 +1400,283 @@
     return 2 * R * Math.asin(Math.sqrt(s));
   }
 
-  let ROUTE_COORDS = ZAMBALES_ROUTE;
-  let cumulativeKm = [0];
-  let totalRouteKm = 0;
+  /* ---------------------------------------------------------
+     CANONICAL KM — why buses can never scatter again, and why they
+     stay identical across browsers even if OSRM behaves differently.
 
-  function buildRouteIndex(coords) {
-    ROUTE_COORDS = coords;
-    cumulativeKm = [0];
-    for (let i = 1; i < coords.length; i++) {
-      cumulativeKm.push(cumulativeKm[i - 1] + haversineKm(coords[i - 1], coords[i]));
+     Bus distances live on a fixed "canonical" km scale computed ONLY
+     from ROUTE_ANCHORS (straight-line leg length x ROAD_LENGTH_FACTOR).
+     Whatever geometry is drawn for leg i — straight line or OSRM road
+     curve — is stretched onto that leg's fixed km range. So:
+       * a bus at canonical km X is always inside the same leg on every
+         device, whether or not that device's OSRM fetch succeeded;
+       * a bad OSRM leg can at worst misshape ONE ~2 km leg (and those
+         are rejected anyway), never shift every bus down the line;
+       * totalRouteKm never changes after load.
+     ROAD_LENGTH_FACTOR: DPWH station distances show the real road is
+     ~8% longer than the straight anchor-to-anchor sum, which keeps
+     ETAs honest (~250 km Caloocan -> Sta. Cruz).
+     --------------------------------------------------------- */
+  const ROAD_LENGTH_FACTOR = 1.08;
+  const LEG_KM = [];
+  const LEG_START_KM = [];
+  (function computeCanonicalLegs() {
+    let acc = 0;
+    for (let i = 0; i < ROUTE_ANCHORS.length - 1; i++) {
+      LEG_START_KM.push(acc);
+      const km = haversineKm(ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1]) * ROAD_LENGTH_FACTOR;
+      LEG_KM.push(km);
+      acc += km;
     }
-    totalRouteKm = cumulativeKm[cumulativeKm.length - 1];
+  })();
+  const totalRouteKm = LEG_START_KM[LEG_START_KM.length - 1] + LEG_KM[LEG_KM.length - 1];
+
+  let ROUTE_COORDS = [];   // drawn geometry (what the map shows)
+  let cumulativeKm = [];   // canonical km at each ROUTE_COORDS vertex (monotonic)
+  let routeLegGeoms = [];  // per-leg geometry currently in use
+  let routeLegSource = []; // 'road' | 'straight' per leg, for debugRoute()
+
+  function straightLegGeoms() {
+    const legs = [];
+    for (let i = 0; i < ROUTE_ANCHORS.length - 1; i++) {
+      legs.push([ROUTE_ANCHORS[i].slice(0, 2), ROUTE_ANCHORS[i + 1].slice(0, 2)]);
+    }
+    return legs;
   }
-  buildRouteIndex(ZAMBALES_ROUTE);
+
+  // legGeoms[i] is the drawn geometry from anchor i to anchor i+1.
+  function buildRouteIndex(legGeoms) {
+    const coords = [], cum = [];
+    legGeoms.forEach((geom, i) => {
+      const within = [0];
+      for (let j = 1; j < geom.length; j++) within.push(within[j - 1] + haversineKm(geom[j - 1], geom[j]));
+      const len = within[within.length - 1];
+      for (let j = (i === 0 ? 0 : 1); j < geom.length; j++) {
+        const frac = len > 0 ? within[j] / len : j / (geom.length - 1);
+        coords.push(geom[j]);
+        cum.push(LEG_START_KM[i] + frac * LEG_KM[i]);
+      }
+    });
+    cum[cum.length - 1] = totalRouteKm; // kill floating-point drift at the end
+    routeLegGeoms = legGeoms;
+    ROUTE_COORDS = coords;
+    cumulativeKm = cum;
+  }
+  buildRouteIndex(straightLegGeoms());
+  routeLegSource = routeLegGeoms.map(() => 'straight');
 
   function pointAtDistance(km) {
     const d = Math.max(0, Math.min(km, totalRouteKm));
-    for (let i = 1; i < cumulativeKm.length; i++) {
-      if (d <= cumulativeKm[i]) {
-        const segStart = cumulativeKm[i - 1], segEnd = cumulativeKm[i];
-        const t = segEnd === segStart ? 0 : (d - segStart) / (segEnd - segStart);
-        const [lng1, lat1] = ROUTE_COORDS[i - 1], [lng2, lat2] = ROUTE_COORDS[i];
-        return [lng1 + (lng2 - lng1) * t, lat1 + (lat2 - lat1) * t];
-      }
+    // binary search: first vertex with cumulativeKm >= d
+    let lo = 1, hi = cumulativeKm.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (cumulativeKm[mid] < d) lo = mid + 1; else hi = mid;
     }
-    return ROUTE_COORDS[ROUTE_COORDS.length - 1];
+    const segStart = cumulativeKm[lo - 1], segEnd = cumulativeKm[lo];
+    const t = segEnd === segStart ? 0 : (d - segStart) / (segEnd - segStart);
+    const [lng1, lat1] = ROUTE_COORDS[lo - 1], [lng2, lat2] = ROUTE_COORDS[lo];
+    return [lng1 + (lng2 - lng1) * t, lat1 + (lat2 - lat1) * t];
   }
 
   function distanceAlongRouteForCoord(coord) {
     let best = { dist: Infinity, cum: 0 };
+    const cosLat = Math.cos(coord[1] * Math.PI / 180);
     for (let i = 1; i < ROUTE_COORDS.length; i++) {
       const p1 = ROUTE_COORDS[i - 1], p2 = ROUTE_COORDS[i];
-      const dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+      const dx = (p2[0] - p1[0]) * cosLat, dy = p2[1] - p1[1];
       const lenSq = dx * dx + dy * dy || 1e-12;
-      let t = ((coord[0] - p1[0]) * dx + (coord[1] - p1[1]) * dy) / lenSq;
+      let t = (((coord[0] - p1[0]) * cosLat) * dx + (coord[1] - p1[1]) * dy) / lenSq;
       t = Math.max(0, Math.min(1, t));
-      const projLng = p1[0] + dx * t, projLat = p1[1] + dy * t;
-      const dLng = coord[0] - projLng, dLat = coord[1] - projLat;
-      const dist = Math.sqrt(dLng * dLng + dLat * dLat);
+      const dLng = (coord[0] - (p1[0] + (p2[0] - p1[0]) * t)) * cosLat;
+      const dLat = coord[1] - (p1[1] + dy * t);
+      const dist = dLng * dLng + dLat * dLat;
       if (dist < best.dist) {
-        const segKm = haversineKm(p1, p2);
-        best = { dist, cum: cumulativeKm[i - 1] + segKm * t };
+        best = { dist, cum: cumulativeKm[i - 1] + (cumulativeKm[i] - cumulativeKm[i - 1]) * t };
       }
     }
     return best.cum;
   }
 
+  // Shortest distance (km) from a point to a polyline — used by the
+  // snapping validator and the debug helpers.
+  function distanceToPolylineKm(coord, line) {
+    const kx = 111.32 * Math.cos(coord[1] * Math.PI / 180), ky = 110.57;
+    let best = Infinity;
+    for (let i = 1; i < line.length; i++) {
+      const ax = (line[i - 1][0] - coord[0]) * kx, ay = (line[i - 1][1] - coord[1]) * ky;
+      const bx = (line[i][0] - coord[0]) * kx, by = (line[i][1] - coord[1]) * ky;
+      const dx = bx - ax, dy = by - ay;
+      const lenSq = dx * dx + dy * dy || 1e-12;
+      const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / lenSq));
+      best = Math.min(best, Math.hypot(ax + dx * t, ay + dy * t));
+    }
+    return best;
+  }
+
   /* =========================================================
-     ROUTE SNAPPING — OSRM public demo server (router.project-osrm.org),
-     free, no API key. Fetches the route ONE LEG AT A TIME (just two
-     points per request) instead of one big 17-waypoint request.
+     ROUTE SNAPPING — optional polish, never load-bearing.
+     The anchors are already on the road, so this only replaces each
+     short straight leg with OSRM's road curve when that curve passes
+     a sanity check. Any leg that fails (or any request that fails)
+     silently stays a straight line between two on-road bridges.
 
-     Why the change: forcing OSRM to visit all 17 waypoints in a single
-     request (even with a generous snap radius) repeatedly produced bad
-     detours — not just small loops-back-on-themselves (which a "detect
-     and remove loops" pass could catch), but genuinely long, wrong
-     paths between waypoints that never loop back at all, so no amount
-     of loop-detection could fix them. Two attempts at post-processing
-     that data confirmed this: even after removing 52km of detected
-     loops, total distance was still ~275km against a real ~150-180km
-     expectation — meaning uncaught bad paths, not just missed loops.
+     Differences from the old approach that produced detours:
+       * waypoints are on-road bridges ~2 km apart, not town centres;
+       * `radiuses` stop OSRM snapping a waypoint to some distant road;
+       * `bearings` stop it snapping onto the opposite carriageway of a
+         divided highway (the classic cause of U-turn spurs);
+       * continue_straight=true forbids U-turns at waypoints;
+       * every leg is validated for length, sideways deviation, and
+         backtracking before it is accepted.
+     5 requests total (chunks of 25 waypoints), not 16-107.
 
-     Point-to-point routing is OSRM's most basic, reliable use case.
-     Fetching each of the 16 legs independently and concatenating them
-     sidesteps the multi-waypoint-forcing problem entirely, rather than
-     trying to detect and patch its symptoms after the fact.
+     To freeze the route permanently (the HANDOFF's "Option B"): open
+     the deployed site, wait for "Route snapping:" in the console, run
+     copy(exportRoute()), and paste the result in place of `null` below.
+     The app will then never call OSRM for the route again.
      ========================================================= */
-  async function fetchLegRoute(a, b) {
-    const url = 'https://router.project-osrm.org/route/v1/driving/' +
-      a[0] + ',' + a[1] + ';' + b[0] + ',' + b[1] + '?overview=full&geometries=geojson';
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.code === 'Ok' && data.routes && data.routes[0]) {
-      return { coords: data.routes[0].geometry.coordinates, distanceKm: data.routes[0].distance / 1000 };
-    }
-    throw new Error('OSRM returned ' + data.code);
+  const SNAP_ROUTE_TO_ROADS = true;
+  const FROZEN_ROUTE_LEGS = null;
+  const OSRM_CHUNK_SIZE = 25;
+  const OSRM_SNAP_RADIUS_M = 250;
+
+  function bearingDeg(a, b) {
+    const toRad = d => d * Math.PI / 180;
+    const y = Math.sin(toRad(b[0] - a[0])) * Math.cos(toRad(b[1]));
+    const x = Math.cos(toRad(a[1])) * Math.sin(toRad(b[1])) -
+              Math.sin(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.cos(toRad(b[0] - a[0]));
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   }
 
-  async function fetchFullRouteByLegs(waypoints) {
-    // Fetch all 16 legs in parallel instead of one-by-one with a delay
-    // between each — that delay was the actual cause of the slow load,
-    // not anything the OSRM demo server required. A one-time page load
-    // of 16 quick requests is fine sent together; the "be polite" advice
-    // is about sustained heavy use, not this.
-    const legPromises = [];
-    for (let i = 0; i < waypoints.length - 1; i++) {
-      legPromises.push(
-        fetchLegRoute(waypoints[i], waypoints[i + 1])
-          .catch(err => {
-            console.warn('Leg ' + i + ' (' + waypoints[i] + ' -> ' + waypoints[i + 1] + ') failed, using a straight line for just this segment.', err);
-            const straightKm = haversineKm(waypoints[i], waypoints[i + 1]);
-            return { coords: [waypoints[i], waypoints[i + 1]], distanceKm: straightKm };
-          })
-      );
+  // Returns null if the leg looks right, otherwise a short reason string.
+  function legProblem(geom, a, b, winding) {
+    const kx = 111.32 * Math.cos(a[1] * Math.PI / 180), ky = 110.57;
+    const bx = (b[0] - a[0]) * kx, by = (b[1] - a[1]) * ky;
+    const chord = Math.hypot(bx, by) || 1e-6;
+    let len = 0, maxDev = 0, furthest = 0, maxBacktrack = 0;
+    for (let j = 0; j < geom.length; j++) {
+      if (j > 0) len += haversineKm(geom[j - 1], geom[j]);
+      const px = (geom[j][0] - a[0]) * kx, py = (geom[j][1] - a[1]) * ky;
+      const along = (px * bx + py * by) / chord;        // progress toward b
+      const side = Math.abs(px * by - py * bx) / chord; // distance off the chord
+      maxDev = Math.max(maxDev, side);
+      furthest = Math.max(furthest, along);
+      maxBacktrack = Math.max(maxBacktrack, furthest - along);
     }
-    const legs = await Promise.all(legPromises);
-
-    // Log each leg's distance individually — if one is way out of line
-    // with what the town-to-town distance should realistically be,
-    // this pinpoints exactly which waypoint pair is causing the problem
-    // instead of only seeing one suspicious total at the end.
-    legs.forEach((leg, i) => {
-      console.log('Leg ' + i + ' (' + waypoints[i].join(',') + ' -> ' + waypoints[i + 1].join(',') + '): ' +
-        leg.distanceKm.toFixed(1) + ' km, ' + leg.coords.length + ' points');
-    });
-
-    let full = [];
-    legs.forEach((leg, i) => {
-      full = full.concat(i === 0 ? leg.coords : leg.coords.slice(1));
-    });
-    return full;
+    const maxLen = winding ? chord * 3.5 + 1 : chord * 1.6 + 1;
+    const devLimit = winding ? Math.max(2, chord * 0.8) : Math.max(0.75, chord * 0.4);
+    if (len > maxLen) return 'too long (' + len.toFixed(1) + ' km vs ' + chord.toFixed(1) + ' km gap)';
+    if (maxDev > devLimit) return 'strays ' + maxDev.toFixed(2) + ' km off the corridor';
+    if (!winding && maxBacktrack > 0.4) return 'doubles back ' + maxBacktrack.toFixed(2) + ' km';
+    return null;
   }
 
-  function applySnappedRoute(coords) {
-    buildRouteIndex(coords);
-    console.log('Route built from', coords.length, 'points across', (ZAMBALES_ROUTE.length - 1), 'legs, total', totalRouteKm.toFixed(1), 'km.');
+  async function osrmRouteChunk(points, constrained) {
+    let url = 'https://router.project-osrm.org/route/v1/driving/' +
+      points.map(p => p[0].toFixed(5) + ',' + p[1].toFixed(5)).join(';') +
+      '?overview=false&steps=true&geometries=geojson&continue_straight=true';
+    if (constrained) {
+      const bearings = points.map((p, k) => {
+        const from = points[Math.max(0, k - 1)], to = points[Math.min(points.length - 1, k + 1)];
+        const heading = k === 0 ? bearingDeg(p, to) : k === points.length - 1 ? bearingDeg(from, p) : bearingDeg(from, to);
+        return Math.round(heading) % 360 + ',90';
+      });
+      url += '&bearings=' + bearings.join(';') + '&radiuses=' + points.map(() => OSRM_SNAP_RADIUS_M).join(';');
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      const data = await res.json();
+      if (data.code !== 'Ok' || !data.routes || !data.routes[0]) throw new Error('OSRM ' + data.code);
+      return data.routes[0].legs;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function fetchSnappedLegs() {
+    const legs = straightLegGeoms();
+    const source = legs.map(() => 'straight');
+    const rejected = [];
+    const lastIdx = ROUTE_ANCHORS.length - 1;
+    const chunks = [];
+    for (let s = 0; s < lastIdx; s += OSRM_CHUNK_SIZE - 1) chunks.push([s, Math.min(s + OSRM_CHUNK_SIZE - 1, lastIdx)]);
+
+    await Promise.all(chunks.map(async ([s, e]) => {
+      const pts = ROUTE_ANCHORS.slice(s, e + 1);
+      let osrmLegs = null;
+      try { osrmLegs = await osrmRouteChunk(pts, true); }
+      catch (err1) {
+        try { osrmLegs = await osrmRouteChunk(pts, false); }
+        catch (err2) { console.warn('Route snapping: anchors ' + s + '-' + e + ' unavailable (' + err2.message + '), keeping straight legs.'); return; }
+      }
+      osrmLegs.forEach((leg, k) => {
+        const i = s + k;
+        const geom = [];
+        leg.steps.forEach(step => step.geometry.coordinates.forEach(c => {
+          const prev = geom[geom.length - 1];
+          if (!prev || prev[0] !== c[0] || prev[1] !== c[1]) geom.push(c);
+        }));
+        if (geom.length < 2) return;
+        // Pin the ends to the exact anchors so consecutive legs always join.
+        geom[0] = ROUTE_ANCHORS[i].slice(0, 2);
+        geom[geom.length - 1] = ROUTE_ANCHORS[i + 1].slice(0, 2);
+        const problem = legProblem(geom, ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1], ROUTE_ANCHORS[i + 1][2] === 'winding');
+        if (problem) { rejected.push('leg ' + i + ': ' + problem); return; }
+        legs[i] = geom;
+        source[i] = 'road';
+      });
+    }));
+    return { legs, source, rejected };
+  }
+
+  function applySnappedRoute(legGeoms, source) {
+    buildRouteIndex(legGeoms);
+    routeLegSource = source;
     if (map.getSource('zambales-route')) {
-      map.getSource('zambales-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+      map.getSource('zambales-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: ROUTE_COORDS } });
     }
-    if (map.getLayer('zambales-route-line')) {
-      map.setPaintProperty('zambales-route-line', 'line-dasharray', [1, 0]); // solid once confirmed real
-      map.setPaintProperty('zambales-route-line', 'line-opacity', 0.55);
-    }
-    createFleet(); // reposition buses onto the corrected geometry
+    // No fleet rebuild needed: canonical km didn't change, so every bus
+    // keeps its identity/tracking and just redraws on the refined line.
+    if (fleet.length) positionFleet();
+    if (isRidingBus) drawMyTripLine();
   }
 
-  fetchFullRouteByLegs(ZAMBALES_ROUTE)
-    .then(applySnappedRoute)
-    .catch(err => console.warn('Route snapping to real roads failed, keeping approximate waypoints (shown dashed).', err));
+  function initRouteGeometry() {
+    if (Array.isArray(FROZEN_ROUTE_LEGS) && FROZEN_ROUTE_LEGS.length === ROUTE_ANCHORS.length - 1) {
+      applySnappedRoute(FROZEN_ROUTE_LEGS, FROZEN_ROUTE_LEGS.map(() => 'frozen'));
+      console.log('Route: using FROZEN_ROUTE_LEGS (' + ROUTE_COORDS.length + ' points, ' + totalRouteKm.toFixed(1) + ' km). OSRM not called.');
+      return;
+    }
+    console.log('Route: ' + ROUTE_ANCHORS.length + ' on-road anchors, ' + totalRouteKm.toFixed(1) + ' km canonical length.');
+    if (!SNAP_ROUTE_TO_ROADS) return;
+    fetchSnappedLegs().then(({ legs, source, rejected }) => {
+      const roadCount = source.filter(s => s === 'road').length;
+      applySnappedRoute(legs, source);
+      console.log('Route snapping: ' + roadCount + '/' + legs.length + ' legs follow OSRM road geometry, ' +
+        (legs.length - roadCount) + ' kept as straight lines between on-road anchors.');
+      if (rejected.length) console.log('Route snapping rejected:\n  ' + rejected.join('\n  '));
+    }).catch(err => console.warn('Route snapping skipped; straight on-road legs in use.', err));
+  }
+
+  // Console helpers
+  window.debugRoute = function () {
+    console.log('totalRouteKm (canonical, fixed):', totalRouteKm.toFixed(2), '| drawn points:', ROUTE_COORDS.length);
+    console.table(routeLegGeoms.map((g, i) => ({
+      leg: i,
+      startKm: +LEG_START_KM[i].toFixed(2),
+      canonicalKm: +LEG_KM[i].toFixed(2),
+      drawnKm: +g.reduce((s, c, j) => j ? s + haversineKm(g[j - 1], c) : 0, 0).toFixed(2),
+      points: g.length,
+      source: routeLegSource[i]
+    })));
+  };
+  window.exportRoute = function () {
+    const rounded = routeLegGeoms.map(g => g.map(c => [+c[0].toFixed(5), +c[1].toFixed(5)]));
+    return JSON.stringify(rounded);
+  };
 
   /* =========================================================
      BUS SIMULATION ENGINE — Fix #6: fully deterministic.
@@ -1586,21 +1840,26 @@
     });
   }
 
-  // Debug helper — open the browser console and run debugBuses() to see
-  // exactly what the live app thinks each bus's position is right now.
+  // Debug helper — run debugBuses() in the console. The old version
+  // compared the marker with pointAtDistance(), which is always true by
+  // construction. This one measures what actually matters: how far each
+  // bus is from the corridor defined by the on-road DPWH anchors.
   window.debugBuses = function () {
-    console.log('totalRouteKm:', totalRouteKm, '| route points:', ROUTE_COORDS.length);
-    fleet.forEach(bus => {
-      const marker = bus.marker.getLngLat();
-      const expected = pointAtDistance(bus.distanceKm);
-      console.log(
-        'bus ' + bus.id, bus.plate,
-        '| distanceKm=' + bus.distanceKm.toFixed(2),
-        '| marker actually at=[' + marker.lng.toFixed(4) + ',' + marker.lat.toFixed(4) + ']',
-        '| pointAtDistance says=[' + expected[0].toFixed(4) + ',' + expected[1].toFixed(4) + ']',
-        '| match? ' + (Math.abs(marker.lng - expected[0]) < 0.0001 && Math.abs(marker.lat - expected[1]) < 0.0001)
-      );
-    });
+    const anchorLine = ROUTE_ANCHORS.map(a => a.slice(0, 2));
+    let worst = 0;
+    console.table(fleet.map(bus => {
+      const ll = bus.marker.getLngLat();
+      const offKm = distanceToPolylineKm([ll.lng, ll.lat], anchorLine);
+      worst = Math.max(worst, offKm);
+      return {
+        bus: bus.id, plate: bus.plate,
+        km: +bus.distanceKm.toFixed(2),
+        dir: bus.direction === 1 ? 'N' : 'S',
+        lngLat: ll.lng.toFixed(4) + ',' + ll.lat.toFixed(4),
+        offCorridorKm: +offKm.toFixed(3)
+      };
+    }));
+    console.log('Worst bus distance from corridor: ' + worst.toFixed(3) + ' km ' + (worst < 1 ? '(OK)' : '(CHECK)'));
   };
 
   // Delegated click handling for the Track/Guide buttons inside bus popups —
@@ -1829,6 +2088,27 @@
     return coords;
   }
 
+  function drawMyTripLine() {
+    const bus = fleet.find(b => b.id === trackedBusId);
+    const originDist = originCoord ? distanceAlongRouteForCoord(originCoord) : (bus ? bus.distanceKm : 0);
+    const destDist = destinationCoord
+      ? distanceAlongRouteForCoord(destinationCoord)
+      : (bus && bus.direction === 1 ? totalRouteKm : 0);
+    const dMin = Math.min(originDist, destDist), dMax = Math.max(originDist, destDist);
+    const myTripCoords = sliceRouteCoords(dMin, dMax);
+
+    if (map.getSource('my-trip-route')) {
+      map.getSource('my-trip-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: myTripCoords } });
+    } else {
+      map.addSource('my-trip-route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: myTripCoords } } });
+      map.addLayer({
+        id: 'my-trip-route-line', type: 'line', source: 'my-trip-route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#007AFF', 'line-width': 5, 'line-opacity': 0.9 }
+      });
+    }
+  }
+
   function toggleRiding() {
     isRidingBus = !isRidingBus;
     busSheetRideToggle.classList.toggle('active', isRidingBus);
@@ -1838,24 +2118,7 @@
         map.setPaintProperty('zambales-route-line', 'line-color', '#FF6961');
         map.setPaintProperty('zambales-route-line', 'line-opacity', 0.4);
       }
-      const bus = fleet.find(b => b.id === trackedBusId);
-      const originDist = originCoord ? distanceAlongRouteForCoord(originCoord) : (bus ? bus.distanceKm : 0);
-      const destDist = destinationCoord
-        ? distanceAlongRouteForCoord(destinationCoord)
-        : (bus && bus.direction === 1 ? totalRouteKm : 0);
-      const dMin = Math.min(originDist, destDist), dMax = Math.max(originDist, destDist);
-      const myTripCoords = sliceRouteCoords(dMin, dMax);
-
-      if (map.getSource('my-trip-route')) {
-        map.getSource('my-trip-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: myTripCoords } });
-      } else {
-        map.addSource('my-trip-route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: myTripCoords } } });
-        map.addLayer({
-          id: 'my-trip-route-line', type: 'line', source: 'my-trip-route',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#007AFF', 'line-width': 5, 'line-opacity': 0.9 }
-        });
-      }
+      drawMyTripLine();
     } else {
       if (map.getLayer('zambales-route-line')) {
         map.setPaintProperty('zambales-route-line', 'line-color', '#FF6961');
@@ -2199,7 +2462,7 @@
   document.getElementById('allowLocation').addEventListener('click', () => {
     permissionOverlay.classList.add('hidden');
     if (!navigator.geolocation) {
-      setOrigin(ZAMBALES_ROUTE[6], 'Current Location (simulated)');
+      setOrigin(OLONGAPO_TERMINAL_COORD, 'Current Location (simulated)');
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -2208,10 +2471,10 @@
         if (isInsideCorridor(coord)) {
           setOrigin(coord, 'Current Location');
         } else {
-          setOrigin(ZAMBALES_ROUTE[6], 'Current Location (simulated — you\'re outside the corridor)');
+          setOrigin(OLONGAPO_TERMINAL_COORD, 'Current Location (simulated — you\'re outside the corridor)');
         }
       },
-      () => setOrigin(ZAMBALES_ROUTE[6], 'Current Location (simulated)'),
+      () => setOrigin(OLONGAPO_TERMINAL_COORD, 'Current Location (simulated)'),
       { timeout: 6000 }
     );
   });
