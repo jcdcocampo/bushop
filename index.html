@@ -1340,16 +1340,27 @@
 
   /* =========================================================
      ROUTE SNAPPING — OSRM public demo server (router.project-osrm.org),
-     free, no API key. Snaps the approximate town waypoints to the
-     actual road network. Falls back to the approximate straight-line
-     waypoints if the fetch fails, since the demo server has no
-     uptime guarantee.
+     free, no API key. Fetches the route ONE LEG AT A TIME (just two
+     points per request) instead of one big 17-waypoint request.
+
+     Why the change: forcing OSRM to visit all 17 waypoints in a single
+     request (even with a generous snap radius) repeatedly produced bad
+     detours — not just small loops-back-on-themselves (which a "detect
+     and remove loops" pass could catch), but genuinely long, wrong
+     paths between waypoints that never loop back at all, so no amount
+     of loop-detection could fix them. Two attempts at post-processing
+     that data confirmed this: even after removing 52km of detected
+     loops, total distance was still ~275km against a real ~150-180km
+     expectation — meaning uncaught bad paths, not just missed loops.
+
+     Point-to-point routing is OSRM's most basic, reliable use case.
+     Fetching each of the 16 legs independently and concatenating them
+     sidesteps the multi-waypoint-forcing problem entirely, rather than
+     trying to detect and patch its symptoms after the fact.
      ========================================================= */
-  async function fetchSnappedRoute(waypoints) {
-    const coordStr = waypoints.map(c => c[0] + ',' + c[1]).join(';');
-    const radiusStr = waypoints.map(() => '5000').join(';'); // 5km snap tolerance per point
-    const url = 'https://router.project-osrm.org/route/v1/driving/' + coordStr +
-      '?overview=full&geometries=geojson&radiuses=' + radiusStr;
+  async function fetchLegRoute(a, b) {
+    const url = 'https://router.project-osrm.org/route/v1/driving/' +
+      a[0] + ',' + a[1] + ';' + b[0] + ',' + b[1] + '?overview=full&geometries=geojson';
     const res = await fetch(url);
     const data = await res.json();
     if (data.code === 'Ok' && data.routes && data.routes[0]) {
@@ -1358,61 +1369,26 @@
     throw new Error('OSRM returned ' + data.code);
   }
 
-  /* Detects and removes "out-and-back" spur/loop segments in the OSRM
-     geometry — scans for places where the path travels away and returns
-     to within ~300m of an earlier point after a much longer detour, and
-     collapses that loop. IMPORTANT: this version fixed a real bug in the
-     first attempt — that one used a fixed 80-POINT lookahead window,
-     calibrated against a tiny 12-point test route. The real OSRM response
-     has ~6,300 points (confirmed via live debugging), so a real detour
-     loop can easily span hundreds of points — way outside an 80-point
-     window, which is why buses were still landing on uncaught loops.
-     This version windows by actual KILOMETERS traveled instead, so it
-     scales correctly regardless of point density. Verified against a
-     realistic ~5,200-point synthetic route with an injected ~25km loop:
-     correctly detected and removed in ~140ms, while a clean route with
-     no loop was left completely untouched (zero false positives). */
-  function removeSpurLoops(coords) {
-    const cum = [0];
-    for (let i = 1; i < coords.length; i++) cum.push(cum[i - 1] + haversineKm(coords[i - 1], coords[i]));
-
-    const MAX_LOOKAHEAD_KM = 60; // generous cap on how far a bad detour might extend
-    const CLOSE_KM = 0.3;
-    const RATIO = 3;
-
-    const cleaned = [coords[0]];
-    let i = 0;
-    while (i < coords.length - 1) {
-      let jumpTo = -1;
-      let j = i + 3;
-      while (j < coords.length && (cum[j] - cum[i]) <= MAX_LOOKAHEAD_KM) {
-        const direct = haversineKm(coords[i], coords[j]);
-        if (direct < CLOSE_KM) {
-          const traveled = cum[j] - cum[i];
-          if (traveled > direct * RATIO + 0.5) jumpTo = j;
-        }
-        j++;
+  async function fetchFullRouteByLegs(waypoints) {
+    let full = [];
+    for (let i = 0; i < waypoints.length - 1; i++) {
+      try {
+        const leg = await fetchLegRoute(waypoints[i], waypoints[i + 1]);
+        // Skip the first point of each leg after the first — it's the
+        // same point the previous leg already ended on.
+        full = full.concat(i === 0 ? leg : leg.slice(1));
+      } catch (err) {
+        console.warn('Leg ' + i + ' (' + waypoints[i] + ' -> ' + waypoints[i + 1] + ') failed, using a straight line for just this segment.', err);
+        full = full.concat(i === 0 ? [waypoints[i], waypoints[i + 1]] : [waypoints[i + 1]]);
       }
-      if (jumpTo > i) {
-        i = jumpTo;
-      } else {
-        cleaned.push(coords[i + 1]);
-        i++;
-      }
+      await new Promise(r => setTimeout(r, 250)); // be polite to the free demo server
     }
-    return cleaned;
+    return full;
   }
 
-  function applySnappedRoute(rawCoords) {
-    let rawKm = 0;
-    for (let i = 1; i < rawCoords.length; i++) rawKm += haversineKm(rawCoords[i - 1], rawCoords[i]);
-    const coords = removeSpurLoops(rawCoords);
-    buildRouteIndex(coords); // sets totalRouteKm from the cleaned coords
-    console.log(
-      'Route snapped: raw OSRM =', rawCoords.length, 'points /', rawKm.toFixed(1), 'km',
-      '-> after spur removal =', coords.length, 'points /', totalRouteKm.toFixed(1), 'km',
-      '(removed', (rawCoords.length - coords.length), 'points,', (rawKm - totalRouteKm).toFixed(1), 'km of loops)'
-    );
+  function applySnappedRoute(coords) {
+    buildRouteIndex(coords);
+    console.log('Route built from', coords.length, 'points across 16 legs, total', totalRouteKm.toFixed(1), 'km.');
     if (map.getSource('zambales-route')) {
       map.getSource('zambales-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
     }
@@ -1423,7 +1399,7 @@
     createFleet(); // reposition buses onto the corrected geometry
   }
 
-  fetchSnappedRoute(ZAMBALES_ROUTE)
+  fetchFullRouteByLegs(ZAMBALES_ROUTE)
     .then(applySnappedRoute)
     .catch(err => console.warn('Route snapping to real roads failed, keeping approximate waypoints (shown dashed).', err));
 
