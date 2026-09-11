@@ -63,9 +63,9 @@
 
   .bus-marker {
     width: 30px; height: 30px; border-radius: 50%;
-    background: linear-gradient(155deg, #0A84FF, #007AFF 55%, #005FCC);
+    background: linear-gradient(155deg, #FF6961, #FF3B30 55%, #C7291D);
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 3px 10px rgba(0, 122, 255, 0.45), 0 0 0 3px #FFFFFF;
+    box-shadow: 0 3px 10px rgba(255, 59, 48, 0.45), 0 0 0 3px #FFFFFF;
     cursor: pointer;
   }
   .bus-marker svg { width: 16px; height: 16px; }
@@ -121,7 +121,10 @@
   header {
     position: absolute;
     top: max(16px, env(safe-area-inset-top));
-    left: 16px; right: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 440px;
     z-index: 20;
     display: flex; align-items: center; justify-content: space-between;
   }
@@ -181,14 +184,14 @@
 
   /* ---------- WEATHER / TIME CAPSULE ---------- */
   .weather-capsule {
-    position: absolute; top: 74px; right: 16px; z-index: 19;
+    position: absolute; top: 74px; left: max(16px, calc(50% - 220px)); z-index: 19;
     background: var(--surface-translucent);
     backdrop-filter: blur(20px) saturate(1.6);
     -webkit-backdrop-filter: blur(20px) saturate(1.6);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-float);
     padding: 10px 14px;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
     min-width: 96px;
     max-width: 190px;
   }
@@ -200,13 +203,13 @@
   .weather-condition { font-size: 11px; color: var(--text-secondary); }
 
   .dev-controls {
-    display: none; flex-direction: column; align-items: flex-end; gap: 6px;
+    display: none; flex-direction: column; align-items: flex-start; gap: 6px;
     margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--hairline);
     width: 100%;
   }
   .dev-controls.visible { display: flex; }
 
-  .dev-row { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: flex-end; }
+  .dev-row { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: flex-start; }
   .dev-row label { font-size: 10px; color: var(--text-secondary); letter-spacing: 0.02em; }
 
   .dev-controls input[type="time"],
@@ -221,7 +224,10 @@
   /* ---------- BOTTOM CONTROL BAR ---------- */
   .bottom-bar-wrap {
     position: absolute;
-    left: 16px; right: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 440px;
     bottom: max(16px, env(safe-area-inset-bottom));
     z-index: 20;
   }
@@ -255,6 +261,12 @@
     font-size: 14px; font-family: inherit; color: var(--text-primary); width: 100%;
   }
   .field input::placeholder { color: var(--text-secondary); }
+
+  .pin-btn {
+    background: none; border: none; padding: 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .pin-btn svg { width: 18px; height: 18px; }
 
   .autocomplete-list {
     position: absolute;
@@ -290,12 +302,22 @@
   .chat-launch:active { background: var(--accent-pressed); transform: scale(0.94); }
   .chat-launch svg { width: 20px; height: 20px; }
 
-  /* ---------- LOCATION PERMISSION SHEET ---------- */
+  /* ---------- LOCATION PERMISSION MODAL ---------- */
+  .permission-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
   .permission-sheet {
-    position: absolute; left: 16px; right: 16px; bottom: 96px; z-index: 30;
+    width: 100%;
+    max-width: 340px;
     background: var(--surface); border-radius: var(--radius-card);
     box-shadow: var(--shadow-float); padding: 20px; text-align: center;
-    max-width: 340px; margin: 0 auto;
   }
   .permission-icon {
     width: 48px; height: 48px; border-radius: 14px;
@@ -350,6 +372,7 @@
     background: rgba(0, 0, 0, 0.25);
     display: flex;
     align-items: flex-end;
+    justify-content: center;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
@@ -358,6 +381,7 @@
 
   .chat-sheet {
     width: 100%;
+    max-width: 480px;
     max-height: 82vh;
     background: var(--surface);
     border-radius: 24px 24px 0 0;
@@ -566,18 +590,20 @@
     <button class="track-btn">Track this Bus</button>
   </div>
 
-  <div class="permission-sheet" id="permissionSheet">
-    <div class="permission-icon">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 21s-7-6.1-7-11.2C5 6 8.1 3 12 3s7 3 7 6.8C19 14.9 12 21 12 21z" stroke="white" stroke-width="1.7" stroke-linejoin="round"/>
-        <circle cx="12" cy="9.5" r="2.3" stroke="white" stroke-width="1.7"/>
-      </svg>
-    </div>
-    <p class="permission-title">Use your location?</p>
-    <p class="permission-body">BusHop can show nearby buses and fill in your starting point automatically. Your location isn't stored — only kept for this session.</p>
-    <div class="permission-actions">
-      <button class="btn-primary" id="allowLocation">Allow While Using App</button>
-      <button class="btn-secondary" id="denyLocation">Enter Manually</button>
+  <div class="permission-overlay" id="permissionOverlay">
+    <div class="permission-sheet" id="permissionSheet">
+      <div class="permission-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 21s-7-6.1-7-11.2C5 6 8.1 3 12 3s7 3 7 6.8C19 14.9 12 21 12 21z" stroke="white" stroke-width="1.7" stroke-linejoin="round"/>
+          <circle cx="12" cy="9.5" r="2.3" stroke="white" stroke-width="1.7"/>
+        </svg>
+      </div>
+      <p class="permission-title">Use your location?</p>
+      <p class="permission-body">BusHop can show nearby buses and fill in your starting point automatically. Your location isn't stored — only kept for this session.</p>
+      <div class="permission-actions">
+        <button class="btn-primary" id="allowLocation">Allow While Using App</button>
+        <button class="btn-secondary" id="denyLocation">Enter Manually</button>
+      </div>
     </div>
   </div>
 
@@ -587,6 +613,9 @@
         <div class="field">
           <span class="field-dot origin"></span>
           <input type="text" placeholder="Your location" id="locationInput" autocomplete="off" aria-label="Your location">
+          <button class="pin-btn" id="pinButton" aria-label="Pin your location on the map" type="button">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7-6.1-7-11.2C5 6 8.1 3 12 3s7 3 7 6.8C19 14.9 12 21 12 21z" stroke="#007AFF" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.3" stroke="#007AFF" stroke-width="1.7"/></svg>
+          </button>
         </div>
         <div class="field">
           <span class="field-dot dest"></span>
@@ -763,7 +792,12 @@
     { name: 'Subic', note: 'SBMA area', coord: [120.2400, 14.8781] },
     { name: 'Olongapo Terminal', note: 'Major hub', coord: [120.2827, 14.8294] },
     { name: 'Dinalupihan', note: 'Bataan, SCTEX junction', coord: [120.4694, 14.8762] },
-    { name: 'Puregold Tabang, Guiguinto', note: 'Landmark near southern corridor', coord: [120.8790, 14.8600] }
+    { name: 'Puregold Tabang, Guiguinto', note: 'Landmark near southern corridor', coord: [120.8790, 14.8600] },
+    { name: 'Caloocan Terminal', note: 'Manila-side boarding point', coord: [120.9836, 14.6531] },
+    { name: 'Cubao Terminal', note: 'Manila-side boarding point', coord: [121.0538, 14.6197] },
+    { name: 'Pasay Terminal', note: 'Manila-side boarding point', coord: [121.0011, 14.5453] },
+    { name: 'Sampaloc Terminal', note: 'Manila-side boarding point', coord: [120.9910, 14.6060] },
+    { name: 'PITX Terminal', note: 'Manila-side boarding point', coord: [120.9847, 14.5013] }
   ];
 
   /* =========================================================
@@ -776,7 +810,7 @@
     [119.9780, 15.3297], [119.9040, 15.4350], [119.8800, 15.5300], [119.9330, 15.5900],
     [119.9040, 15.7700]
   ];
-  const CORRIDOR_BOUNDS = [[119.55, 14.55], [121.05, 16.00]];
+  const CORRIDOR_BOUNDS = [[119.55, 14.30], [121.20, 16.00]];
 
   const map = new maplibregl.Map({
     container: 'map-canvas',
@@ -820,8 +854,13 @@
   });
 
   map.on('click', (e) => {
-    if (devSwitch.classList.contains('on') && devLocationMode.value === 'tap') {
+    const devTapMode = devSwitch.classList.contains('on') && devLocationMode.value === 'tap';
+    if (devTapMode || manualPinArmed) {
       setOrigin([e.lngLat.lng, e.lngLat.lat], 'Custom pin');
+      if (manualPinArmed && !devTapMode) {
+        manualPinArmed = false;
+        mapHint.classList.add('hidden');
+      }
     }
   });
 
@@ -837,6 +876,10 @@
 
   /* =========================================================
      ROUTE GEOMETRY HELPERS (for placing and projecting buses)
+     ROUTE_COORDS starts as the approximate waypoints and gets
+     replaced with real road-snapped geometry from OSRM once that
+     fetch resolves (see ROUTE SNAPPING below) — everything here
+     reads from the current ROUTE_COORDS, not the original array.
      ========================================================= */
   function haversineKm(a, b) {
     const toRad = d => d * Math.PI / 180;
@@ -846,11 +889,19 @@
     return 2 * R * Math.asin(Math.sqrt(s));
   }
 
-  const cumulativeKm = [0];
-  for (let i = 1; i < ZAMBALES_ROUTE.length; i++) {
-    cumulativeKm.push(cumulativeKm[i - 1] + haversineKm(ZAMBALES_ROUTE[i - 1], ZAMBALES_ROUTE[i]));
+  let ROUTE_COORDS = ZAMBALES_ROUTE;
+  let cumulativeKm = [0];
+  let totalRouteKm = 0;
+
+  function buildRouteIndex(coords) {
+    ROUTE_COORDS = coords;
+    cumulativeKm = [0];
+    for (let i = 1; i < coords.length; i++) {
+      cumulativeKm.push(cumulativeKm[i - 1] + haversineKm(coords[i - 1], coords[i]));
+    }
+    totalRouteKm = cumulativeKm[cumulativeKm.length - 1];
   }
-  const totalRouteKm = cumulativeKm[cumulativeKm.length - 1];
+  buildRouteIndex(ZAMBALES_ROUTE);
 
   function pointAtDistance(km) {
     const d = Math.max(0, Math.min(km, totalRouteKm));
@@ -858,17 +909,17 @@
       if (d <= cumulativeKm[i]) {
         const segStart = cumulativeKm[i - 1], segEnd = cumulativeKm[i];
         const t = segEnd === segStart ? 0 : (d - segStart) / (segEnd - segStart);
-        const [lng1, lat1] = ZAMBALES_ROUTE[i - 1], [lng2, lat2] = ZAMBALES_ROUTE[i];
+        const [lng1, lat1] = ROUTE_COORDS[i - 1], [lng2, lat2] = ROUTE_COORDS[i];
         return [lng1 + (lng2 - lng1) * t, lat1 + (lat2 - lat1) * t];
       }
     }
-    return ZAMBALES_ROUTE[ZAMBALES_ROUTE.length - 1];
+    return ROUTE_COORDS[ROUTE_COORDS.length - 1];
   }
 
   function distanceAlongRouteForCoord(coord) {
     let best = { dist: Infinity, cum: 0 };
-    for (let i = 1; i < ZAMBALES_ROUTE.length; i++) {
-      const p1 = ZAMBALES_ROUTE[i - 1], p2 = ZAMBALES_ROUTE[i];
+    for (let i = 1; i < ROUTE_COORDS.length; i++) {
+      const p1 = ROUTE_COORDS[i - 1], p2 = ROUTE_COORDS[i];
       const dx = p2[0] - p1[0], dy = p2[1] - p1[1];
       const lenSq = dx * dx + dy * dy || 1e-12;
       let t = ((coord[0] - p1[0]) * dx + (coord[1] - p1[1]) * dy) / lenSq;
@@ -883,6 +934,37 @@
     }
     return best.cum;
   }
+
+  /* =========================================================
+     ROUTE SNAPPING — OSRM public demo server (router.project-osrm.org),
+     free, no API key, sponsored by FOSSGIS for non-commercial use
+     (capped at 1 request/sec, which this respects — one call on load).
+     Snaps the approximate town waypoints to the actual road network.
+     Falls back silently to the approximate straight-line waypoints
+     if the fetch fails, since the demo server has no uptime guarantee.
+     ========================================================= */
+  async function fetchSnappedRoute(waypoints) {
+    const coordStr = waypoints.map(c => c[0] + ',' + c[1]).join(';');
+    const url = 'https://router.project-osrm.org/route/v1/driving/' + coordStr + '?overview=full&geometries=geojson';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+      return data.routes[0].geometry.coordinates;
+    }
+    throw new Error('OSRM returned ' + data.code);
+  }
+
+  function applySnappedRoute(coords) {
+    buildRouteIndex(coords);
+    if (map.getSource('zambales-route')) {
+      map.getSource('zambales-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+    }
+    createFleet(); // reposition buses onto the corrected geometry
+  }
+
+  fetchSnappedRoute(ZAMBALES_ROUTE)
+    .then(applySnappedRoute)
+    .catch(err => console.warn('Route snapping to real roads failed, keeping approximate waypoints.', err));
 
   /* =========================================================
      BUS SIMULATION ENGINE
@@ -1056,9 +1138,9 @@
   }
 
   /* =========================================================
-     GEOLOCATION (permission sheet)
+     GEOLOCATION (permission modal)
      ========================================================= */
-  const permissionSheet = document.getElementById('permissionSheet');
+  const permissionOverlay = document.getElementById('permissionOverlay');
 
   function isInsideCorridor(coord) {
     const [lng, lat] = coord;
@@ -1067,7 +1149,7 @@
   }
 
   document.getElementById('allowLocation').addEventListener('click', () => {
-    permissionSheet.classList.add('hidden');
+    permissionOverlay.classList.add('hidden');
     if (!navigator.geolocation) {
       setOrigin(ZAMBALES_ROUTE[6], 'Current Location (simulated)');
       return;
@@ -1087,32 +1169,43 @@
   });
 
   document.getElementById('denyLocation').addEventListener('click', () => {
-    permissionSheet.classList.add('hidden');
+    permissionOverlay.classList.add('hidden');
   });
 
   /* =========================================================
-     AUTOCOMPLETE — shared between location + destination fields
+     MANUAL PIN — available any time, not just in Dev Mode
+     ========================================================= */
+  let manualPinArmed = false;
+
+  function armManualPin() {
+    manualPinArmed = true;
+    mapHint.classList.remove('hidden');
+  }
+
+  document.getElementById('pinButton').addEventListener('click', armManualPin);
+
+  /* =========================================================
+     AUTOCOMPLETE — shared between location + destination fields.
+     Shows local LANDMARKS matches instantly (no network), then
+     merges in live results from Open-Meteo's free geocoding API
+     (no key, confirmed free tier) after a short debounce, so any
+     place name works, not just the fixed route/terminal list.
      ========================================================= */
   const autocompleteList = document.getElementById('autocompleteList');
-  let activeField = null;
+  let geocodeDebounceTimer = null;
+  let geocodeRequestId = 0;
 
-  function showAutocomplete(query, field) {
-    const q = query.trim().toLowerCase();
-    if (!q) { autocompleteList.classList.add('hidden'); return; }
-    const matches = LANDMARKS.filter(l => l.name.toLowerCase().includes(q)).slice(0, 5);
-    if (matches.length === 0) { autocompleteList.classList.add('hidden'); return; }
-
+  function renderAutocompleteItems(items, field) {
+    if (items.length === 0) { autocompleteList.classList.add('hidden'); return; }
     autocompleteList.innerHTML = '';
-    matches.forEach(landmark => {
+    items.forEach(place => {
       const item = document.createElement('div');
       item.className = 'autocomplete-item';
-      item.innerHTML = landmark.name + '<span>' + landmark.note + '</span>';
+      item.tabIndex = 0;
+      item.innerHTML = place.name + '<span>' + place.note + '</span>';
       item.addEventListener('click', () => {
-        if (field === 'origin') {
-          setOrigin(landmark.coord, landmark.name);
-        } else {
-          setDestination(landmark.coord, landmark.name);
-        }
+        if (field === 'origin') setOrigin(place.coord, place.name);
+        else setDestination(place.coord, place.name);
         autocompleteList.classList.add('hidden');
       });
       autocompleteList.appendChild(item);
@@ -1120,8 +1213,45 @@
     autocompleteList.classList.remove('hidden');
   }
 
-  locationInput.addEventListener('input', () => { activeField = 'origin'; showAutocomplete(locationInput.value, 'origin'); });
-  destinationInput.addEventListener('input', () => { activeField = 'destination'; showAutocomplete(destinationInput.value, 'destination'); });
+  async function fetchGeocodeResults(query) {
+    const url = 'https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(query) + '&count=5&language=en&format=json';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.results) return [];
+    return data.results.map(r => ({
+      name: r.name,
+      note: [r.admin1, r.country].filter(Boolean).join(', ') || 'Searched location',
+      coord: [r.longitude, r.latitude]
+    }));
+  }
+
+  function showAutocomplete(query, field) {
+    const q = query.trim().toLowerCase();
+    clearTimeout(geocodeDebounceTimer);
+    if (!q) { autocompleteList.classList.add('hidden'); return; }
+
+    // Instant pass: local landmarks, no network call.
+    const localMatches = LANDMARKS.filter(l => l.name.toLowerCase().includes(q)).slice(0, 5);
+    renderAutocompleteItems(localMatches, field);
+
+    // Debounced pass: live geocoding, merged in once it resolves.
+    if (q.length < 3) return;
+    const requestId = ++geocodeRequestId;
+    geocodeDebounceTimer = setTimeout(async () => {
+      try {
+        const geocoded = await fetchGeocodeResults(query.trim());
+        if (requestId !== geocodeRequestId) return; // a newer keystroke superseded this request
+        const localNames = new Set(localMatches.map(l => l.name.toLowerCase()));
+        const merged = localMatches.concat(geocoded.filter(g => !localNames.has(g.name.toLowerCase())));
+        renderAutocompleteItems(merged.slice(0, 8), field);
+      } catch (err) {
+        console.warn('Live location search failed, showing local matches only.', err);
+      }
+    }, 350);
+  }
+
+  locationInput.addEventListener('input', () => showAutocomplete(locationInput.value, 'origin'));
+  destinationInput.addEventListener('input', () => showAutocomplete(destinationInput.value, 'destination'));
 
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.field-stack')) autocompleteList.classList.add('hidden');
