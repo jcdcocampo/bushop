@@ -506,7 +506,40 @@
     color: #fff;
     border-bottom-right-radius: 4px;
   }
-  .msg.typing { color: var(--text-secondary); font-style: italic; }
+  .msg.typing { color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+  .typing-dots { display: inline-flex; gap: 3px; }
+  .typing-dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.4; animation: typingDot 1.2s infinite ease-in-out; }
+  .typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes typingDot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 0.9; transform: translateY(-2px); } }
+  .typing-text { font-size: 13px; }
+  .msg p { margin: 0; }
+  .msg p + p, .msg p + ul, .msg ul + p { margin-top: 6px; }
+  .msg ul { margin: 4px 0 0; padding-left: 18px; }
+  .msg li { margin: 2px 0; }
+  .msg-source { display: block; margin-top: 6px; font-size: 10px; color: var(--text-secondary); letter-spacing: 0.02em; }
+  .chat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 2px; }
+  .chat-action {
+    border: 1px solid rgba(0, 122, 255, 0.35); background: var(--surface); color: var(--accent);
+    border-radius: var(--radius-pill); padding: 6px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .chat-action:active { background: rgba(0, 122, 255, 0.08); }
+  .chat-send:disabled { opacity: 0.5; cursor: default; }
+  .chat-header-actions { display: flex; gap: 6px; }
+
+  /* Greeting (empty chat) */
+  .busboy-hero { margin: auto 0; padding: 12px 4px 4px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+  .busboy-hero-icon { width: 44px; height: 44px; margin-bottom: 6px; }
+  .busboy-hero-icon svg { width: 44px; height: 44px; }
+  .busboy-hero-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
+  .busboy-hero-sub { font-size: 14px; color: var(--text-primary); margin: 0; line-height: 1.45; max-width: 300px; }
+  .busboy-hero-traffic { font-size: 12px; color: var(--text-secondary); margin: 4px 0 0; }
+  .busboy-hero-asks { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 18px; }
+  .ask-card {
+    text-align: left; border: 1px solid var(--hairline); background: rgba(118, 118, 128, 0.06);
+    border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 13px; color: var(--text-primary); cursor: pointer;
+  }
+  .ask-card:active { background: rgba(0, 122, 255, 0.08); }
 
   .quick-replies {
     display: flex;
@@ -868,7 +901,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .user-marker::after, .bus-marker.tracked::after { animation: none; }
+    .user-marker::after, .bus-marker.tracked::after, .typing-dots i { animation: none; }
     .chat-sheet, .chat-overlay, .switch, .switch::after { transition: none; }
   }
 </style>
@@ -1104,17 +1137,38 @@
             <div class="chat-header-sub" id="chatHeaderSub">Zambales Line assistant</div>
           </div>
         </div>
+        <div class="chat-header-actions">
+        <button class="chat-close chat-new" id="chatNew" aria-label="New chat" title="New chat">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v14M5 12h14" stroke="#1D1D1F" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </button>
         <button class="chat-close" id="chatClose" aria-label="Close chat">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 5l14 14M19 5L5 19" stroke="#1D1D1F" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
+        </div>
       </div>
 
-      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-messages" id="chatMessages" aria-live="polite">
+        <!-- Greeting shown on an empty chat; hidden once the conversation starts -->
+        <div class="busboy-hero" id="busboyHero">
+          <div class="busboy-hero-icon" id="busboyHeroIcon" aria-hidden="true"></div>
+          <h2 class="busboy-hero-title" id="busboyHeroTitle">Good day, BUSahero</h2>
+          <p class="busboy-hero-sub" id="busboyHeroSub"></p>
+          <p class="busboy-hero-traffic hidden" id="busboyHeroTraffic"></p>
+          <div class="busboy-hero-asks">
+            <button class="ask-card" type="button" data-ask="Is Puregold Tabang Guiguinto along the bus route?">Is Puregold Tabang Guiguinto along the bus route?</button>
+            <button class="ask-card" type="button" data-ask="Where's the nearest bus going to Iba?">Where's the nearest bus going to Iba?</button>
+            <button class="ask-card" type="button" data-ask="How much is the fare to Botolan?">How much is the fare to Botolan?</button>
+          </div>
+        </div>
+      </div>
 
+      <!-- Quick chips: answered instantly from the app (no AI request used) -->
       <div class="quick-replies">
-        <button class="chip" data-quick="fare">What's the fare?</button>
-        <button class="chip" data-quick="terminal">Nearest terminal?</button>
-        <button class="chip" data-quick="arrival">Next bus arrival?</button>
+        <button class="chip" type="button" data-chip="nearest_bus">Nearest bus to me</button>
+        <button class="chip" type="button" data-chip="hop_on" data-label="Where do I hop on?">Where do I hop on?</button>
+        <button class="chip" type="button" data-chip="next_bus">Next bus times</button>
+        <button class="chip" type="button" data-chip="terminal">Nearest terminal</button>
+        <button class="chip" type="button" data-chip="fares">Fares</button>
       </div>
 
       <div class="chat-input-area">
@@ -1125,7 +1179,7 @@
           </button>
         </div>
       </div>
-      <div class="chat-disclaimer">BusBoy's responses may be inaccurate. Please verify.</div>
+      <div class="chat-disclaimer">BusBoy responses may be inaccurate. Please verify.</div>
     </div>
   </div>
 
@@ -1174,16 +1228,27 @@
     return 'partly-cloudy';
   }
 
+  // Next few hours of forecast, used by BusBoy's greeting ("Rain is likely around 4 PM").
+  let liveForecast = []; // [{ label: '4 PM', rain: true }]
+
   async function fetchLiveWeather(coord) {
     weatherCoord = coord;
     try {
       const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + coord[1] +
-        '&longitude=' + coord[0] + '&current=temperature_2m,weather_code&timezone=auto';
+        '&longitude=' + coord[0] + '&current=temperature_2m,weather_code' +
+        '&hourly=precipitation_probability,weather_code&forecast_hours=4&timezone=Asia%2FManila';
       const res = await fetch(url);
       const data = await res.json();
       liveTemp = Math.round(data.current.temperature_2m);
       liveCondition = mapWeatherCode(data.current.weather_code);
+      const h = data.hourly || {};
+      liveForecast = (h.time || []).map((t, i) => {
+        const hour = Number(t.slice(11, 13));
+        const wet = ['rainy', 'stormy'].includes(mapWeatherCode((h.weather_code || [])[i]));
+        return { label: (hour % 12 || 12) + ' ' + (hour >= 12 ? 'PM' : 'AM'), rain: wet || ((h.precipitation_probability || [])[i] >= 60) };
+      });
       if (!devSwitch.classList.contains('on')) renderWeather(liveCondition, liveTemp);
+      updateChatSubtitleLive();
     } catch (err) {
       // Network unavailable or blocked — keep showing the last known reading
       // rather than surfacing an error in a weather capsule.
@@ -1347,22 +1412,24 @@
     { name: 'PITX Terminal', note: 'Manila-side boarding point', coord: [120.9847, 14.5013] },
 
     // --- Towns (also searchable) ---
-    { name: 'Masinloc', note: 'Zambales town', coord: [119.9330, 15.5900] },
-    { name: 'Candelaria', note: 'Zambales town', coord: [119.8800, 15.5300] },
-    { name: 'Botolan', note: 'Zambales town', coord: [119.9600, 15.2800] },
-    { name: 'San Felipe', note: 'Zambales town', coord: [120.0500, 15.0900] },
-    { name: 'San Antonio', note: 'Zambales town', coord: [120.1444, 15.0958] },
-    { name: 'San Narciso', note: 'Zambales town', coord: [120.0850, 15.0500] },
-    { name: 'San Marcelino', note: 'Zambales town', coord: [120.1592, 15.0000] },
-    { name: 'Castillejos', note: 'Zambales town', coord: [120.1936, 14.9257] },
-    { name: 'Subic', note: 'SBMA area', coord: [120.2400, 14.8781] },
-    { name: 'Dinalupihan', note: 'Bataan, SCTEX junction', coord: [120.4694, 14.8762] },
+    // Coordinates sit on the national highway inside each town (DPWH bridge
+    // locations), so "is X on the route" checks measure from the real road.
+    { name: 'Masinloc', note: 'Zambales town', coord: [119.9498, 15.5468] },
+    { name: 'Candelaria', note: 'Zambales town', coord: [119.9351, 15.6311] },
+    { name: 'Botolan', note: 'Zambales town', coord: [120.0341, 15.2800] },
+    { name: 'San Felipe', note: 'Zambales town', coord: [120.0741, 15.0443] },
+    { name: 'San Antonio', note: 'Zambales town', coord: [120.0874, 14.9617] },
+    { name: 'San Narciso', note: 'Zambales town', coord: [120.0802, 15.0100] },
+    { name: 'San Marcelino', note: 'Zambales town', coord: [120.1600, 14.9709] },
+    { name: 'Castillejos', note: 'Zambales town', coord: [120.1820, 14.9491] },
+    { name: 'Subic', note: 'Zambales town, SBMA area', coord: [120.2350, 14.8765] },
+    { name: 'Dinalupihan', note: 'Bataan town, SCTEX junction', coord: [120.4545, 14.8665] },
 
     // --- Malls & shopping ---
     { name: 'SM City Olongapo Central', note: 'Mall, Rizal Ave., Brgy. East Tapinac, Olongapo', coord: [120.2830, 14.8360] },
     { name: 'Marquee Mall', note: 'Mall, San Fernando, Pampanga', coord: [120.6875, 15.0339] },
     { name: 'Harbor Point Ayala Mall', note: 'Mall, Subic Bay Freeport Zone', coord: [120.2670, 14.7950] },
-    { name: 'Puregold Tabang, Guiguinto', note: 'Landmark near southern corridor', coord: [120.8790, 14.8600] },
+    { name: 'Puregold Tabang, Guiguinto', note: 'Supermarket on MacArthur Hwy, Brgy. Tabang, Guiguinto, Bulacan', coord: [120.8655, 14.8357] },
 
     // --- City/Municipal halls & government ---
     { name: 'Caloocan City Hall', note: 'Government', coord: [120.9834, 14.6572] },
@@ -3281,72 +3348,486 @@
   });
 
   /* =========================================================
-     BUSBOY — chat panel, weather-aware greeting, cached FAQs,
-     and the OpenRouter call routed through a Cloudflare Worker.
-     =========================================================
-     IMPORTANT: replace this with your deployed Worker's URL.
-     The Worker (see worker.js) holds the OpenRouter key server-side
-     so it's never exposed in this front-end code. Until deployed,
-     free-text questions fail gracefully with a setup note; the
-     quick-reply chips below work immediately since they're
-     answered from cached local data and never call the API. */
+     BUSBOY — agentic assistant
+     ---------------------------------------------------------
+     How the "agent" works:
+       1. The conversation goes to the Cloudflare Worker (worker.js),
+          which adds BusBoy's system prompt + tool list and asks an
+          OpenRouter free model.
+       2. If the model decides it needs live data, it replies with
+          tool calls (find_place, nearest_bus, next_bus_at,
+          nearest_terminal, get_fare) instead of text.
+       3. Those tools run HERE, in the browser, against the live map:
+          real bus positions, your pin, Dev Mode's simulated clock.
+       4. Results go back to the model; repeat until it answers.
+     Chips and common FAQs are answered locally with the same tools,
+     so they're instant and don't use the free daily request quota.
+     If the Worker is unreachable or rate-limited, BusBoy falls back
+     to those local answers instead of just failing.
+     ========================================================= */
   const BUSBOY_WORKER_URL = 'https://busboy-chatbot.jc-ocampo0907.workers.dev/chat';
+  const BUSBOY_MAX_ROUNDS = 5;      // tool-use rounds per question
+  const BUSBOY_HISTORY_TURNS = 10;  // past messages sent for follow-up context
 
-  const FARES_BY_DEST = {
-    'olongapo': '₱320 (Inner Cities) / ₱416 (Express)',
-    'iba': '₱495 (Inner Cities) up to ₱640 (Deluxe Express)',
-    'sta. cruz': '₱648 (Inner Cities) up to ₱805 (Deluxe Express)',
-    'santa cruz': '₱648 (Inner Cities) up to ₱805 (Deluxe Express)'
+  /* ---------- Route knowledge (from DPWH bridge municipalities) ---------- */
+  // [first route-anchor index, town, province]
+  const ROUTE_TOWN_SEGMENTS = [
+    [0, 'Caloocan', 'Metro Manila'], [1, 'Valenzuela', 'Metro Manila'], [3, 'Meycauayan', 'Bulacan'],
+    [4, 'Marilao', 'Bulacan'], [5, 'Bocaue', 'Bulacan'], [8, 'Balagtas', 'Bulacan'], [9, 'Guiguinto', 'Bulacan'],
+    [12, 'Malolos', 'Bulacan'], [17, 'Calumpit', 'Bulacan'], [20, 'Apalit', 'Pampanga'], [22, 'San Simon', 'Pampanga'],
+    [23, 'Minalin', 'Pampanga'], [24, 'Sto. Tomas', 'Pampanga'], [26, 'San Fernando', 'Pampanga'],
+    [32, 'Bacolor', 'Pampanga'], [34, 'Guagua', 'Pampanga'], [36, 'Lubao', 'Pampanga'], [44, 'Hermosa', 'Bataan'],
+    [45, 'Dinalupihan', 'Bataan'], [52, 'Olongapo', 'Zambales'], [57, 'Subic', 'Zambales'],
+    [63, 'Castillejos', 'Zambales'], [66, 'San Marcelino', 'Zambales'], [68, 'San Narciso', 'Zambales'],
+    [70, 'San Felipe', 'Zambales'], [75, 'Cabangan', 'Zambales'], [82, 'Botolan', 'Zambales'], [88, 'Iba', 'Zambales'],
+    [93, 'Palauig', 'Zambales'], [96, 'Masinloc', 'Zambales'], [99, 'Candelaria', 'Zambales'], [103, 'Sta. Cruz', 'Zambales']
+  ];
+  const ROUTE_ROAD_SEGMENTS = [[0, 'MacArthur Highway'], [29, 'Jose Abad Santos Avenue (JASA)'], [54, 'Olongapo–Bugallon Road']];
+
+  function legIndexAtKm(km) {
+    let lo = 0, hi = LEG_START_KM.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (LEG_START_KM[mid] <= km) lo = mid; else hi = mid - 1;
+    }
+    return lo;
+  }
+  function segmentFor(segments, idx) {
+    let current = segments[0];
+    for (const seg of segments) { if (seg[0] <= idx) current = seg; else break; }
+    return current;
+  }
+  function nearestLandmarkTo(coord, maxKm) {
+    let best = null;
+    LANDMARKS.forEach(l => {
+      if (/town/i.test(l.note)) return; // "near Botolan" in Botolan isn't useful
+      const d = haversineKm(coord, l.coord);
+      if (d <= maxKm && (!best || d < best.d)) best = { l, d };
+    });
+    return best ? best.l : null;
+  }
+  function describeRouteKm(km) {
+    const idx = legIndexAtKm(Math.max(0, Math.min(totalRouteKm - 1e-6, km)));
+    const town = segmentFor(ROUTE_TOWN_SEGMENTS, idx);
+    const road = segmentFor(ROUTE_ROAD_SEGMENTS, idx)[1];
+    const coord = pointAtDistance(km);
+    const landmark = nearestLandmarkTo(coord, 1.2);
+    return {
+      town: town[1], province: town[2], road, coord,
+      label: road + ' in ' + town[1] + ', ' + town[2] + (landmark ? ' (near ' + landmark.name + ')' : '')
+    };
+  }
+  // How a place relates to the bus line: where you'd board/alight and how far off the road it is.
+  function routeRelation(coord) {
+    const km = distanceAlongRouteForCoord(coord);
+    const point = describeRouteKm(km);
+    const offKm = haversineKm(coord, point.coord);
+    return {
+      routeKm: km,
+      offRouteKm: Math.round(offKm * 100) / 100,
+      status: offKm <= 1 ? 'on_route' : offKm <= 5 ? 'near_route' : 'far_from_route',
+      point
+    };
+  }
+
+  /* ---------- Time helpers ---------- */
+  function formatManilaClock(ms) {
+    const d = manilaDate(ms);
+    const h = d.getUTCHours();
+    return (h % 12 || 12) + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+  function directionLabel(dir) {
+    return dir === 1 ? 'northbound (toward Olongapo / Sta. Cruz)' : 'southbound (toward Caloocan / Manila)';
+  }
+
+  /* ---------- Place resolution: landmarks -> OpenStreetMap -> towns ---------- */
+  const placeCache = new Map();
+  const PLACE_STOPWORDS = new Set(['the', 'near', 'city', 'brgy', 'barangay', 'bus', 'going', 'papunta', 'para', 'and', 'road', 'street']);
+  function normalizePlaceText(s) {
+    return String(s || '').toLowerCase()
+      .replace(/\bsta\.?\s/g, 'santa ').replace(/\bsto\.?\s/g, 'santo ')
+      .replace(/[^a-z0-9ñ ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function matchLocalLandmark(query) {
+    const q = normalizePlaceText(query);
+    if (q.length < 3) return null;
+    const tokens = q.split(' ').filter(t => t.length >= 3 && !PLACE_STOPWORDS.has(t));
+    if (!tokens.length) return null;
+    let best = null;
+    LANDMARKS.forEach(l => {
+      const name = normalizePlaceText(l.name);
+      const hay = name + ' ' + normalizePlaceText(l.note);
+      const score = (q === name || name.startsWith(q + ' ') || q.includes(name)) ? 2
+        : tokens.filter(t => hay.includes(t)).length / tokens.length;
+      if (!best || score > best.score) best = { l, score };
+    });
+    return best && best.score >= 0.75 ? best.l : null;
+  }
+  let lastNominatimAt = 0;
+  async function searchOpenStreetMap(query) {
+    const wait = Math.max(0, lastNominatimAt + 1100 - Date.now()); // Nominatim policy: max 1 request/second
+    if (wait) await new Promise(r => setTimeout(r, wait));
+    lastNominatimAt = Date.now();
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=ph&limit=3&accept-language=en' +
+      '&viewbox=119.55,16.00,121.20,14.30&bounded=0&q=' + encodeURIComponent(query);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Nominatim ' + res.status);
+    const rows = await res.json();
+    return rows.map(r => ({
+      name: (r.name || r.display_name.split(',')[0]).trim(),
+      address: r.display_name.split(',').slice(1, 4).join(',').trim(),
+      coord: [Number(r.lon), Number(r.lat)]
+    }));
+  }
+  async function searchTowns(query) {
+    const url = 'https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(query) + '&count=5&language=en&format=json';
+    const res = await fetch(url);
+    const data = await res.json();
+    return (data.results || []).filter(r => r.country_code === 'PH')
+      .map(r => ({ name: r.name, address: [r.admin2, r.admin1].filter(Boolean).join(', '), coord: [r.longitude, r.latitude] }));
+  }
+  async function resolvePlace(query) {
+    const q = String(query || '').trim().slice(0, 100);
+    if (!q) return { found: false };
+    if (/^(my location|my place|here|me|where i am|aking lokasyon|dito)$/i.test(q)) {
+      return originCoord ? { found: true, name: 'your location', coord: originCoord, source: 'user' } : { found: false, reason: 'location_not_set' };
+    }
+    const key = normalizePlaceText(q);
+    if (placeCache.has(key)) return placeCache.get(key);
+    let result = { found: false, query: q };
+    const local = matchLocalLandmark(q);
+    if (local) {
+      result = { found: true, name: local.name, address: local.note, coord: local.coord, source: 'bushop_landmarks' };
+    } else {
+      let hits = [];
+      try { hits = await searchOpenStreetMap(q); } catch (e) { console.warn('OSM search failed', e); }
+      if (!hits.length) { try { hits = await searchTowns(q); } catch (e) { console.warn('Town search failed', e); } }
+      if (hits.length) {
+        result = { found: true, name: hits[0].name, address: hits[0].address, coord: hits[0].coord, source: 'openstreetmap',
+          other_matches: hits.slice(1).map(h => h.name + (h.address ? ' — ' + h.address : '')) };
+      }
+    }
+    placeCache.set(key, result);
+    return result;
+  }
+
+  /* ---------- Bus math ---------- */
+  // Route km a bus still has to cover to pass `targetKm` travelling in `wantDir`
+  // (1 north, -1 south, 0 either) — including turning around at a terminus.
+  function busApproach(bus, targetKm, wantDir) {
+    const L = totalRouteKm, x = bus.distanceKm, options = [];
+    if (bus.direction === 1) {
+      if (targetKm >= x) options.push({ km: targetKm - x, dir: 1 });
+      options.push({ km: (L - x) + (L - targetKm), dir: -1 });
+      if (targetKm < x) options.push({ km: (L - x) + L + targetKm, dir: 1 });
+    } else {
+      if (targetKm <= x) options.push({ km: x - targetKm, dir: -1 });
+      options.push({ km: x + targetKm, dir: 1 });
+      if (targetKm > x) options.push({ km: x + L + (L - targetKm), dir: -1 });
+    }
+    return options.filter(o => !wantDir || o.dir === wantDir).sort((a, b) => a.km - b.km)[0] || null;
+  }
+  // Same ETA formula as the app's ETA card, so chat and card agree.
+  function etaMinutesForKm(bus, km) { return km / Math.max(bus.baseSpeed * getSpeedMultiplier(), 5) * 60; }
+  function upcomingBuses(targetKm, wantDir, limit) {
+    return fleet.map(bus => ({ bus, a: busApproach(bus, targetKm, wantDir) }))
+      .filter(x => x.a)
+      .map(x => {
+        const mins = etaMinutesForKm(x.bus, x.a.km);
+        return {
+          bus: x.bus, dir: x.a.dir, minutes: mins,
+          info: {
+            plate: x.bus.plate,
+            eta_minutes: Math.max(1, Math.round(mins)),
+            arrives_around: formatManilaClock(nowMs() + mins * 60000),
+            heading: directionLabel(x.a.dir),
+            currently_in: describeRouteKm(x.bus.distanceKm).town
+          }
+        };
+      })
+      .sort((p, q) => p.minutes - q.minutes)
+      .slice(0, limit);
+  }
+  const WALK_KMH = 4.5;
+  function accessHint(offKm) {
+    if (offKm <= 0.3) return 'You are right by the highway.';
+    if (offKm <= 1.5) return 'About a ' + Math.max(1, Math.round(offKm / WALK_KMH * 60)) + '-minute walk to the highway.';
+    return 'Too far to walk comfortably — take a tricycle or jeep to the boarding point.';
+  }
+
+  /* ---------- Tools (shared by the AI agent and the local quick answers) ---------- */
+  const PUBLISHED_FARES = [ // Victory Liner fares from Manila, as used elsewhere in BusHop
+    { to: 'Olongapo', anchor: 54, inner: 320, premium: 416, premiumLabel: 'Express' },
+    { to: 'Iba', anchor: 88, inner: 495, premium: 640, premiumLabel: 'Deluxe Express' },
+    { to: 'Sta. Cruz', anchor: 107, inner: 648, premium: 805, premiumLabel: 'Deluxe Express' }
+  ];
+  // Canonical km of a route anchor (the last anchor has no leg starting at it).
+  function anchorKm(i) { return i < LEG_START_KM.length ? LEG_START_KM[i] : totalRouteKm; }
+  function fareCurve(km, key) { // piecewise-linear through the published fares, starting at Caloocan (km 0)
+    const pts = [[0, 0]].concat(PUBLISHED_FARES.map(f => [anchorKm(f.anchor), f[key]]));
+    for (let i = 1; i < pts.length; i++) {
+      if (km <= pts[i][0]) return pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * (km - pts[i - 1][0]) / (pts[i][0] - pts[i - 1][0]);
+    }
+    return pts[pts.length - 1][1];
+  }
+  const roundFare = v => Math.round(v / 5) * 5;
+
+  const BUSBOY_TOOLS = {
+    async find_place({ query }, actions) {
+      const place = await resolvePlace(query);
+      if (!place.found) {
+        return place.reason === 'location_not_set'
+          ? { found: false, reason: 'location_not_set', tell_user: 'Set your location first (allow location, or tap the pin in "Your location").' }
+          : { found: false, query, tell_user: "Couldn't find that place. Ask for the barangay/town or a nearby landmark." };
+      }
+      const rel = routeRelation(place.coord);
+      actions.push({ type: 'set_destination', coord: place.coord, name: place.name, label: 'Set ' + place.name + ' as destination' });
+      return {
+        found: true, place: place.name, address: place.address || null, other_matches: place.other_matches,
+        relation_to_bus_route: rel.status,
+        distance_from_bus_route_km: rel.offRouteKm,
+        nearest_point_on_route: rel.point.label,
+        how_to_get_there: rel.status === 'far_from_route'
+          ? 'Not on the Zambales Line. The closest the bus gets is ' + rel.point.label + ', ' + rel.offRouteKm + ' km away.'
+          : 'Get off along ' + rel.point.label + '. ' + accessHint(rel.offRouteKm)
+      };
+    },
+
+    async nearest_bus({ destination }, actions) {
+      if (!originCoord) return { ok: false, reason: 'location_not_set', tell_user: 'Set your location first (allow location, or tap the pin in "Your location").' };
+      const from = routeRelation(originCoord);
+      let dest = null, wantDir = 0;
+      const destPlace = destination ? await resolvePlace(destination)
+        : destinationCoord ? { found: true, name: destinationInput.value || 'your destination', coord: destinationCoord } : null;
+      if (destPlace && !destPlace.found) return { ok: false, reason: 'destination_not_found', query: destination, tell_user: "Couldn't find that destination. Ask for a town or landmark name." };
+      if (destPlace) {
+        const rel = routeRelation(destPlace.coord);
+        dest = { name: destPlace.name, relation_to_bus_route: rel.status, get_off_at: rel.point.label, distance_from_route_km: rel.offRouteKm };
+        if (Math.abs(rel.routeKm - from.routeKm) < 0.5) {
+          return { ok: true, note: 'Destination is at the same point of the route as the user — no bus ride needed.', destination: dest };
+        }
+        wantDir = rel.routeKm > from.routeKm ? 1 : -1;
+        dest.ride_minutes = Math.round(Math.abs(rel.routeKm - from.routeKm) / Math.max(44 * getSpeedMultiplier(), 5) * 60);
+        if (destination) actions.push({ type: 'set_destination', coord: destPlace.coord, name: destPlace.name, label: 'Set ' + destPlace.name + ' as destination' });
+      }
+      const buses = upcomingBuses(from.routeKm, wantDir, 2);
+      if (!buses.length) return { ok: false, reason: 'no_buses', tell_user: 'No buses are running on that side right now.' };
+      actions.push({ type: 'track', busId: buses[0].bus.id, label: 'Track ' + buses[0].bus.plate });
+      actions.push({ type: 'show', coord: from.point.coord, name: 'Boarding point', label: 'Show boarding point' });
+      return {
+        ok: true,
+        board_at: from.point.label,
+        distance_from_user_to_highway_km: from.offRouteKm,
+        getting_to_boarding_point: accessHint(from.offRouteKm),
+        direction_needed: wantDir ? directionLabel(wantDir) : 'either direction (no destination given)',
+        next_buses: buses.map(b => b.info),
+        destination: dest,
+        note: 'Times are Philippine time; buses are BusHop demo simulations.'
+      };
+    },
+
+    async next_bus_at({ place, direction }, actions) {
+      const target = await resolvePlace(place || 'my location');
+      if (!target.found) {
+        return target.reason === 'location_not_set'
+          ? { ok: false, reason: 'location_not_set', tell_user: 'Set your location first, or name the stop.' }
+          : { ok: false, query: place, tell_user: "Couldn't find that stop." };
+      }
+      const rel = routeRelation(target.coord);
+      const dirs = direction === 'northbound' ? [1] : direction === 'southbound' ? [-1] : [1, -1];
+      const out = { ok: true, place: target.name, stop_on_route: rel.point.label, distance_from_route_km: rel.offRouteKm };
+      if (rel.status === 'far_from_route') out.warning = 'This place is not on the bus route; times are for the nearest point on the route.';
+      dirs.forEach(dir => {
+        out[dir === 1 ? 'northbound' : 'southbound'] = upcomingBuses(rel.routeKm, dir, 2).map(b => b.info);
+      });
+      const first = upcomingBuses(rel.routeKm, dirs.length === 1 ? dirs[0] : 0, 1)[0];
+      if (first) actions.push({ type: 'track', busId: first.bus.id, label: 'Track ' + first.bus.plate });
+      return out;
+    },
+
+    async nearest_terminal(args, actions) {
+      if (!originCoord) return { ok: false, reason: 'location_not_set', tell_user: 'Set your location first (allow location, or tap the pin in "Your location").' };
+      const ranked = MAJOR_TERMINALS.map(t => ({ t, km: haversineKm(originCoord, t.coord) })).sort((a, b) => a.km - b.km);
+      const best = ranked[0];
+      const termKm = distanceAlongRouteForCoord(best.t.coord);
+      actions.push({ type: 'show', coord: best.t.coord, name: best.t.name, label: 'Show ' + best.t.name });
+      const next = upcomingBuses(termKm, 0, 1)[0];
+      return {
+        ok: true,
+        nearest_terminal: best.t.name, address: best.t.note,
+        straight_line_distance_km: Math.round(best.km * 10) / 10,
+        next_bus_passing_terminal: next ? next.info : null,
+        other_terminals: ranked.slice(1, 3).map(r => r.t.name + ' (' + r.km.toFixed(1) + ' km)'),
+        tip: best.km > 3 ? 'You may not need the terminal — any point along the highway is a boarding point. Use nearest_bus for that.' : null
+      };
+    },
+
+    async get_fare({ destination, origin }) {
+      const toPlace = await resolvePlace(destination);
+      if (!toPlace.found) return { ok: false, query: destination, tell_user: "Couldn't find that destination." };
+      let fromName = 'Caloocan (Manila side)', fromKm = 0;
+      if (origin) {
+        const p = await resolvePlace(origin);
+        if (p.found) { fromName = p.name; fromKm = routeRelation(p.coord).routeKm; }
+      } else if (originCoord) {
+        fromName = 'your location'; fromKm = routeRelation(originCoord).routeKm;
+      }
+      const to = routeRelation(toPlace.coord);
+      const tripKm = Math.abs(to.routeKm - fromKm);
+      const published = fromKm < 3 && PUBLISHED_FARES.find(f => Math.abs(anchorKm(f.anchor) - to.routeKm) < 4);
+      const base = {
+        ok: true, from: fromName, to: toPlace.name,
+        destination_relation_to_route: to.status,
+        published_fares_from_manila: PUBLISHED_FARES.map(f => f.to + ': ₱' + f.inner + ' Inner Cities / ₱' + f.premium + ' ' + f.premiumLabel)
+      };
+      if (published) {
+        return { ...base, basis: 'published', inner_cities: '₱' + published.inner, premium: '₱' + published.premium + ' (' + published.premiumLabel + ')' };
+      }
+      if (tripKm < 5) return { ...base, basis: 'too_short', note: 'Very short trip — the conductor charges the minimum fare; confirm on board.' };
+      const lo = [fromKm, to.routeKm].sort((a, b) => a - b);
+      return {
+        ...base, basis: 'estimated_by_distance', trip_km: Math.round(tripKm),
+        estimated_inner_cities: '₱' + roundFare(fareCurve(lo[1], 'inner') - fareCurve(lo[0], 'inner')),
+        estimated_premium: '₱' + roundFare(fareCurve(lo[1], 'premium') - fareCurve(lo[0], 'premium')),
+        note: 'Estimate from published fares by distance. Say clearly that it is an estimate and to confirm with the conductor or terminal.'
+      };
+    }
   };
-  const FARES = {
-    fare: "Fares from Manila: Olongapo ₱320 (Inner Cities) / ₱416 (Express), Iba ₱495–₱640, Sta. Cruz ₱648–₱805, depending on bus class. Exact fare depends on your boarding point along the line."
+  const TOOL_STATUS = {
+    find_place: a => 'Looking up ' + (a.query ? '“' + a.query + '”' : 'that place') + '…',
+    nearest_bus: () => 'Checking live buses…',
+    next_bus_at: a => 'Checking buses at ' + (a.place || 'your stop') + '…',
+    nearest_terminal: () => 'Finding your nearest terminal…',
+    get_fare: () => 'Checking fares…'
   };
 
-  const chatOverlay = document.getElementById('chatOverlay');
-  const chatMessages = document.getElementById('chatMessages');
-  const chatHeaderSub = document.getElementById('chatHeaderSub');
-  const chatInput = document.getElementById('chatInput');
-  let chatOpened = false;
-
+  /* ---------- Greeting: time of day + weather + short forecast ---------- */
+  function weatherReminder() {
+    const cond = currentCondition, temp = Math.round(currentTemp), hour = getEffectiveHour();
+    const night = hour < 5.5 || hour >= 18.5;
+    const dev = isDevOn();
+    // Forecast only applies to live weather; in Dev Mode the sky override is the truth.
+    const soon = !dev && liveForecast.find(h => h.rain);
+    if (cond === 'stormy') return 'Thunderstorms right now. Stay safe and expect slower buses.';
+    if (cond === 'rainy') return "It's raining. Don't forget your umbrella!";
+    if (soon) return 'Rain is likely around ' + soon.label + '. Bring an umbrella just in case.';
+    if (temp >= 33 && !night) return "It's a hot " + temp + '°C. Stay hydrated and bring a cap or payong.';
+    if (cond === 'sunny' && !night) return 'Sunny and ' + temp + "°C. Sunscreen helps while you wait at the stop.";
+    if (temp <= 23) return 'A cool ' + temp + '°C. A light jacket helps on the air-conditioned bus.';
+    if (cond === 'cloudy') return 'Cloudy skies at ' + temp + '°C. A comfy day for a bus ride.';
+    if (night) return 'A calm ' + temp + '°C night. Keep your things close on late trips.';
+    return 'Fair weather at ' + temp + '°C. A good time to catch your bus.';
+  }
   function getGreeting() {
     const hour = getEffectiveHour();
-    const timeOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+    const timeOfDay = hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 18 ? 'afternoon' : 'evening';
     const bucket = bucketForHour(hour);
-
-    const conditionPhrase = {
-      sunny: 'clear skies', 'partly-cloudy': 'fair weather', cloudy: 'overcast skies',
-      rainy: 'rain', stormy: 'stormy weather'
-    }[currentCondition] || 'fair weather';
-
-    let tempPhrase = '';
-    if (currentTemp >= 33) tempPhrase = ', and it\u2019s hot out';
-    else if (currentTemp <= 23) tempPhrase = ', and it\u2019s cool out';
-
-    let trafficPhrase = '';
-    if (bucket === 'peak') trafficPhrase = ' Buses are running slower than usual with peak traffic.';
-    else if (bucket === 'night') trafficPhrase = ' Roads are quiet tonight.';
-
-    let sub = 'It\u2019s ' + conditionPhrase + tempPhrase + ' right now (' + Math.round(currentTemp) + '\u00b0C).' + trafficPhrase;
-    if (currentCondition === 'rainy') sub += ' Don\u2019t forget your umbrella!';
-    if (currentCondition === 'stormy') sub = 'Stormy weather right now (' + Math.round(currentTemp) + '\u00b0C) \u2014 stay safe, buses may run much slower.';
-
-    return { title: 'Good ' + timeOfDay + ', BUSahero', sub, timeLabel: timeOfDay };
+    const traffic = bucket === 'peak' ? 'Peak hours — buses may run slower than usual.'
+      : bucket === 'night' ? 'Fewer buses run at night.' : '';
+    return { title: 'Good ' + timeOfDay + ', BUSahero', sub: weatherReminder(), traffic };
   }
 
-  // Fix #8: keeps BusBoy's subtitle in sync with Dev Mode's time/temp/sky
-  // sliders in real time, even if the chat panel is already open or has
-  // never been opened yet — not just at the moment it's first launched.
-  function updateChatSubtitleLive() {
-    chatHeaderSub.textContent = getGreeting().sub;
+  /* ---------- Chat UI ---------- */
+  const chatOverlay = document.getElementById('chatOverlay');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatInput = document.getElementById('chatInput');
+  const chatSendBtn = document.getElementById('chatSend');
+  const busboyHero = document.getElementById('busboyHero');
+  let busboyHistory = [];   // {role:'user'|'assistant', content} — final messages only
+  let busboyBusy = false;
+
+  function renderHero() {
+    const g = getGreeting();
+    document.getElementById('busboyHeroTitle').textContent = g.title;
+    document.getElementById('busboyHeroSub').textContent = g.sub;
+    document.getElementById('busboyHeroIcon').innerHTML = weatherIcons[currentCondition] || '';
+    const traffic = document.getElementById('busboyHeroTraffic');
+    traffic.textContent = g.traffic;
+    traffic.classList.toggle('hidden', !g.traffic);
+  }
+  // Called by Dev Mode sliders / weather updates / bucket changes.
+  function updateChatSubtitleLive() { renderHero(); }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  // Minimal, safe formatting for model output: **bold**, bullet lines, line breaks.
+  function renderRichText(text) {
+    const lines = escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').split(/\n/);
+    let html = '', inList = false;
+    lines.forEach(line => {
+      const m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+      if (m) { if (!inList) { html += '<ul>'; inList = true; } html += '<li>' + m[1] + '</li>'; return; }
+      if (inList) { html += '</ul>'; inList = false; }
+      if (line.trim()) html += '<p>' + line + '</p>';
+    });
+    if (inList) html += '</ul>';
+    return html;
   }
 
-  function addMessage(text, sender) {
+  function addMessage(text, sender, opts) {
+    opts = opts || {};
+    busboyHero.classList.add('hidden');
     const el = document.createElement('div');
     el.className = 'msg ' + sender;
-    el.textContent = text;
+    if (sender === 'bot' && !opts.plain) el.innerHTML = renderRichText(text); else el.textContent = text;
+    if (opts.source) {
+      const tag = document.createElement('span');
+      tag.className = 'msg-source';
+      tag.textContent = opts.source;
+      el.appendChild(tag);
+    }
     chatMessages.appendChild(el);
+    if (opts.actions && opts.actions.length) chatMessages.appendChild(renderActions(opts.actions));
     chatMessages.scrollTop = chatMessages.scrollHeight;
     return el;
+  }
+  function addTyping(text) {
+    busboyHero.classList.add('hidden');
+    const el = document.createElement('div');
+    el.className = 'msg bot typing';
+    el.innerHTML = '<span class="typing-dots"><i></i><i></i><i></i></span><span class="typing-text"></span>';
+    el.querySelector('.typing-text').textContent = text;
+    chatMessages.appendChild(el);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return { set: t => { el.querySelector('.typing-text').textContent = t; }, remove: () => el.remove() };
+  }
+
+  let chatShowMarker = null;
+  function renderActions(actions) {
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-actions';
+    const seen = new Set();
+    actions.filter(a => { const k = a.type + (a.busId ?? '') + (a.name || ''); if (seen.has(k)) return false; seen.add(k); return true; })
+      .slice(0, 3)
+      .forEach(a => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chat-action';
+        b.textContent = a.label;
+        b.addEventListener('click', () => runChatAction(a));
+        wrap.appendChild(b);
+      });
+    return wrap;
+  }
+  function runChatAction(a) {
+    const mobile = !DESKTOP_QUERY.matches; // the chat sheet covers the map on phones
+    if (a.type === 'track') {
+      const bus = fleet.find(b => b.id === a.busId);
+      if (!bus) { addMessage('That bus is no longer on the road. Ask me again for a fresh one.', 'bot'); return; }
+      if (mobile) closeChat();
+      openBusSheet(bus);
+      map.easeTo({ center: bus.marker.getLngLat(), zoom: Math.max(map.getZoom(), 12) });
+    } else if (a.type === 'set_destination') {
+      if (mobile) closeChat();
+      setDestination(a.coord, a.name);
+    } else if (a.type === 'show') {
+      if (mobile) closeChat();
+      if (chatShowMarker) chatShowMarker.remove();
+      chatShowMarker = new maplibregl.Marker({ color: '#007AFF' }).setLngLat(a.coord)
+        .setPopup(new maplibregl.Popup({ offset: 24 }).setHTML('<strong>' + escapeHtml(a.name) + '</strong>')).addTo(map);
+      map.flyTo({ center: a.coord, zoom: 14 });
+    }
   }
 
   function closeChat() {
@@ -3355,133 +3836,248 @@
     chatLaunchBtn.classList.remove('is-open');
     chatLaunchBtn.setAttribute('aria-label', 'Open BusBoy chat');
   }
-
   function openChat() {
     syncChatPopoverAnchor();
     chatOverlay.classList.add('open');
     document.body.classList.add('chat-open');
     chatLaunchBtn.classList.add('is-open');
     chatLaunchBtn.setAttribute('aria-label', 'Close BusBoy chat');
+    renderHero();
     chatInput.focus();
-    chatHeaderSub.textContent = getGreeting().sub;
-    if (!chatOpened) {
-      const greeting = getGreeting();
-      addMessage(greeting.title + '. ' + greeting.sub + ' Ask me about fares, terminals, or your next bus.', 'bot');
-      chatOpened = true;
-    }
   }
-
-  // On desktop the launch button stays visible under the popover, so it toggles.
+  function resetChat() {
+    busboyHistory = [];
+    chatMessages.querySelectorAll('.msg, .chat-actions').forEach(n => n.remove());
+    busboyHero.classList.remove('hidden');
+    renderHero();
+    chatInput.focus();
+  }
   document.getElementById('chatLaunchBtn').addEventListener('click', () => {
     if (chatOverlay.classList.contains('open')) closeChat(); else openChat();
   });
   document.getElementById('chatClose').addEventListener('click', closeChat);
+  document.getElementById('chatNew').addEventListener('click', resetChat);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && chatOverlay.classList.contains('open')) closeChat();
   });
 
-  /* ---------------------------------------------------------
-     CACHED FAQ ANSWERS — shared by quick-reply chips AND typed
-     free-text questions. Answering from here never calls the
-     Worker/OpenRouter at all, which is the point: it keeps the
-     free-tier request budget for questions that actually need
-     the LLM's reasoning.
-     --------------------------------------------------------- */
-  function fareAnswer(text) {
-    const lower = (text || '').toLowerCase();
-    for (const key in FARES_BY_DEST) {
-      if (lower.includes(key)) return 'Fare to ' + key.replace(/^\w/, c => c.toUpperCase()) + ': ' + FARES_BY_DEST[key] + '.';
+  /* ---------- Cached / local answers (no API call) ---------- */
+  const STATIC_FAQ = [
+    {
+      test: /^(help|what can you do|what do you do|how can you help|menu|commands?)\??$/i,
+      answer: () => "I'm BusBoy! I can:\n- find the **nearest bus** to you (even one going to a specific place)\n- tell you **where to hop on** and its ETA\n- find your **nearest terminal** and the next bus there\n- check **fares**\n- tell you if a place like a mall or school is **along the bus route**\nTry: “Is Puregold Tabang Guiguinto on the route?”"
+    },
+    {
+      test: /^(how does bushop work|what is bushop|how do(es)? (this|the app) work)\??$/i,
+      answer: () => 'BusHop shows Victory Liner buses on the Zambales Line (Caloocan → Sta. Cruz) on a live map. Set **Your location**, optionally **Where to?**, then tap **Find My Bus** for the best bus and its ETA. Bus positions are a demo simulation; weather is live.'
+    },
+    {
+      test: /^(are (the )?buses real|is this real[- ]?time|is (this|it) live)\??$/i,
+      answer: () => "The buses are a **demo simulation** — they move realistically along the real highway, and every device sees the same positions, but they aren't GPS-tracked Victory Liner buses. Weather and maps are live."
+    },
+    {
+      test: /^(fares?|fare list|fare matrix|how much( is (the )?fare)?|pamasahe)\??$/i,
+      answer: () => localFareOverview()
+    },
+    {
+      test: /^(terminals?|where are the terminals|list (of )?terminals)\??$/i,
+      answer: () => 'Zambales Line terminals:\n' + MAJOR_TERMINALS.map(t => '- **' + t.name + '** — ' + t.note).join('\n')
+    },
+    {
+      test: /^(hi|hello|hey|yo|good (morning|afternoon|evening)|kumusta|hello busboy|hi busboy)[!. ]*$/i,
+      answer: () => getGreeting().title + '! ' + getGreeting().sub + ' What trip can I help with?'
     }
-    return FARES.fare;
-  }
-
-  function nearestTerminalAnswer() {
-    if (!originCoord) return "Set your location on the map first and I'll find your nearest terminal.";
-    let nearest = LANDMARKS[0], bestDist = Infinity;
-    LANDMARKS.forEach(l => {
-      const d = haversineKm(originCoord, l.coord);
-      if (d < bestDist) { bestDist = d; nearest = l; }
-    });
-    return 'Nearest stop looks like ' + nearest.name + ', about ' + bestDist.toFixed(1) + ' km from your location.';
-  }
-
-  function nextArrivalAnswer() {
-    const val = etaValueEl.textContent, plate = etaPlateEl.textContent;
-    if (originCoord && val && val !== 'Calculating…') {
-      return 'Nearest approaching bus is ' + val + (plate ? ' (' + plate + ')' : '') + '.';
-    }
-    return "Set your location first and I'll check the nearest approaching bus.";
-  }
-
-  function routeCoverageAnswer() {
-    return 'BusHop currently covers the Zambales Line corridor: ' + LANDMARKS.map(l => l.name).join(', ') + '.';
-  }
-
-  // Pattern → answer function, checked in order. First match wins.
-  const FAQ_PATTERNS = [
-    { test: /fare|magkano|presyo|bayad|how much/i, answer: fareAnswer },
-    { test: /terminal|nearest stop|boarding point|saan.*sakay/i, answer: () => nearestTerminalAnswer() },
-    { test: /next bus|arrival|\beta\b|susunod na bus|paparating/i, answer: () => nextArrivalAnswer() },
-    { test: /route|coverage|which towns|saklaw|barangay|\bstops\b/i, answer: () => routeCoverageAnswer() }
   ];
-
-  function matchCachedFAQ(text) {
-    const hit = FAQ_PATTERNS.find(p => p.test.test(text));
-    return hit ? hit.answer(text) : null;
+  function localFareOverview() {
+    return 'Victory Liner fares from Manila:\n' +
+      PUBLISHED_FARES.map(f => '- **' + f.to + '**: ₱' + f.inner + ' Inner Cities / ₱' + f.premium + ' ' + f.premiumLabel).join('\n') +
+      '\nFor other stops, ask me “fare to [place]” and I’ll estimate it.';
   }
 
-  document.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const key = chip.dataset.quick;
-      addMessage(chip.textContent, 'user');
-      if (key === 'fare') addMessage(fareAnswer(''), 'bot');
-      else if (key === 'terminal') addMessage(nearestTerminalAnswer(), 'bot');
-      else if (key === 'arrival') addMessage(nextArrivalAnswer(), 'bot');
-    });
+  // Deterministic formatters so chips work without the AI.
+  function formatNearestBus(r) {
+    if (!r.ok) return r.tell_user || "I couldn't find a bus right now.";
+    if (r.note && !r.next_buses) return 'You’re already at ' + (r.destination ? r.destination.name : 'that stop') + ' — no bus needed!';
+    const b = r.next_buses[0];
+    let s = 'Hop on along **' + r.board_at + '**. ' + r.getting_to_boarding_point +
+      '\nNext ' + (r.direction_needed.startsWith('either') ? '' : r.direction_needed.split(' ')[0] + ' ') +
+      'bus: **' + b.plate + '**, about **' + b.eta_minutes + ' min** away (around ' + b.arrives_around + '), now in ' + b.currently_in + '.';
+    if (r.next_buses[1]) s += '\nAfter that: ' + r.next_buses[1].plate + ' in ' + r.next_buses[1].eta_minutes + ' min.';
+    if (r.destination) s += '\nGet off along ' + r.destination.get_off_at + ' (~' + r.destination.ride_minutes + ' min ride).';
+    return s;
+  }
+  function formatBoarding(r) {
+    if (!r.ok) return r.tell_user || "I couldn't work that out right now.";
+    return 'Your closest boarding point is **' + r.board_at + '**, ' + r.distance_from_user_to_highway_km + ' km from you. ' + r.getting_to_boarding_point +
+      ' Buses stop along the highway, so you don’t need a terminal.';
+  }
+  function formatTerminal(r) {
+    if (!r.ok) return r.tell_user;
+    let s = 'Nearest terminal: **' + r.nearest_terminal + '** (' + r.address + '), ' + r.straight_line_distance_km + ' km away.';
+    if (r.next_bus_passing_terminal) s += '\nNext bus there: ' + r.next_bus_passing_terminal.plate + ' in about ' + r.next_bus_passing_terminal.eta_minutes + ' min (' + r.next_bus_passing_terminal.arrives_around + ').';
+    if (r.tip) s += '\nTip: any point along the highway works as a boarding point.';
+    return s;
+  }
+  function formatNextBus(r) {
+    if (!r.ok) return r.tell_user;
+    const fmt = list => list && list.length ? list.map(b => b.plate + ' at ' + b.arrives_around + ' (' + b.eta_minutes + ' min)').join(', ') : 'none soon';
+    let s = 'Next buses at **' + r.stop_on_route + '**:\n- Northbound: ' + fmt(r.northbound) + '\n- Southbound: ' + fmt(r.southbound);
+    if (r.warning) s += '\n' + r.warning;
+    return s;
+  }
+  function formatFindPlace(r) {
+    if (!r.found) return r.tell_user;
+    const verdict = { on_route: 'Yes — it’s **right on the bus route**.', near_route: 'Yes — it’s **near the bus route** (' + r.distance_from_bus_route_km + ' km off the highway).', far_from_route: 'No — it’s **not along the Zambales Line**.' }[r.relation_to_bus_route];
+    return '**' + r.place + '**: ' + verdict + '\n' + r.how_to_get_there;
+  }
+  function formatFare(r) {
+    if (!r.ok) return r.tell_user;
+    if (r.basis === 'published') return 'Fare to **' + r.to + '**: ' + r.inner_cities + ' Inner Cities, ' + r.premium + '.';
+    if (r.basis === 'too_short') return r.note;
+    return 'Estimated fare from ' + r.from + ' to **' + r.to + '** (~' + r.trip_km + ' km): about **' + r.estimated_inner_cities + '** Inner Cities, ' + r.estimated_premium + ' premium. This is an estimate — confirm with the conductor.';
+  }
+
+  const CHIP_HANDLERS = {
+    nearest_bus: { tool: 'nearest_bus', args: () => ({}), format: formatNearestBus },
+    hop_on: { tool: 'nearest_bus', args: () => ({}), format: formatBoarding },
+    terminal: { tool: 'nearest_terminal', args: () => ({}), format: formatTerminal },
+    fares: { local: () => localFareOverview() },
+    next_bus: { tool: 'next_bus_at', args: () => ({ place: 'my location' }), format: formatNextBus }
+  };
+  async function runChip(key, label) {
+    if (busboyBusy) return;
+    const h = CHIP_HANDLERS[key];
+    addMessage(label, 'user');
+    let text, actions = [];
+    if (h.local) text = h.local();
+    else text = h.format(await BUSBOY_TOOLS[h.tool](h.args(), actions));
+    addMessage(text, 'bot', { actions, source: 'Instant answer' });
+    busboyHistory.push({ role: 'user', content: label }, { role: 'assistant', content: text });
+  }
+  document.querySelectorAll('[data-chip]').forEach(btn => {
+    btn.addEventListener('click', () => runChip(btn.dataset.chip, btn.dataset.label || btn.textContent.trim()));
+  });
+  document.querySelectorAll('[data-ask]').forEach(btn => {
+    btn.addEventListener('click', () => { chatInput.value = btn.dataset.ask; handleSend(); });
   });
 
-  async function sendToBusBoy(userText) {
-    const typingEl = addMessage('BusBoy is typing…', 'bot typing');
-    try {
-      const context = {
-        weather: currentCondition,
-        temperature: currentTemp,
-        originSet: !!originCoord,
-        destination: destinationCoord ? destinationInput.value : null,
-        nearestBusEta: etaValueEl.textContent || null
-      };
-      const res = await fetch(BUSBOY_WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userText, context })
-      });
-      if (!res.ok) throw new Error('Worker returned ' + res.status);
-      const data = await res.json();
-      typingEl.remove();
-      addMessage(data.reply || "Sorry, I couldn't get an answer just now.", 'bot');
-    } catch (err) {
-      typingEl.remove();
-      addMessage("I can't reach my backend yet — the Cloudflare Worker (worker.js) needs to be deployed and BUSBOY_WORKER_URL updated in the code. Try the quick replies above in the meantime!", 'bot');
-      console.warn('BusBoy request failed:', err);
+  // Offline fallback: rough intent routing when the AI can't be reached.
+  function extractPlace(text) {
+    // Last "to X" / "sa X" / "near X" phrase, matched on whole words (so "wh-at" isn't "at").
+    const m = text.match(/.*\b(?:going to|go to|to|papunta sa|papuntang|sa|near|in|at)\s+([a-zñ0-9 .,'-]{3,}?)[?.!]*$/i);
+    return m ? m[1].replace(/[?.!]+$/, '').trim() : null;
+  }
+  async function localIntentAnswer(text, actions) {
+    const place = extractPlace(text);
+    if (/fare|pamasahe|how much|magkano|presyo/i.test(text)) {
+      return place ? formatFare(await BUSBOY_TOOLS.get_fare({ destination: place }, actions)) : localFareOverview();
     }
+    if (/terminal/i.test(text)) return formatTerminal(await BUSBOY_TOOLS.nearest_terminal({}, actions));
+    if (/hop on|board|sakay|where (do|can) i (get|ride)/i.test(text)) return formatBoarding(await BUSBOY_TOOLS.nearest_bus({}, actions));
+    if (/next bus|what time|oras|arrive|arrival|eta/i.test(text)) return formatNextBus(await BUSBOY_TOOLS.next_bus_at({ place: 'my location' }, actions));
+    if (/nearest bus|bus near|closest bus/i.test(text)) return formatNearestBus(await BUSBOY_TOOLS.nearest_bus(place ? { destination: place } : {}, actions));
+    if (place && /route|on the way|daan|pass|near|dadaan|bus/i.test(text)) return formatFindPlace(await BUSBOY_TOOLS.find_place({ query: place }, actions));
+    return null;
   }
 
-  function handleSend() {
-    const text = chatInput.value.trim();
-    if (!text) return;
-    addMessage(text, 'user');
-    chatInput.value = '';
+  /* ---------- The agent loop ---------- */
+  function appContextForAI() {
+    return {
+      now_ph: DAY_NAMES[manilaDate(nowMs()).getUTCDay()] + ' ' + formatManilaClock(nowMs()),
+      weather: currentCondition,
+      temperature: Math.round(currentTemp),
+      rain_expected_soon: !isDevOn() && !!liveForecast.find(h => h.rain),
+      location: originCoord ? (locationInput.value || 'set') : null,
+      destination: destinationCoord ? (destinationInput.value || 'set') : null,
+      dev_mode: isDevOn()
+    };
+  }
+  async function callBusBoyWorker(messages, forceAnswer) {
+    const res = await fetch(BUSBOY_WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, context: appContextForAI(), final: !!forceAnswer })
+    });
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* non-JSON error */ }
+    if (!res.ok) {
+      const err = new Error((data && data.error) || ('HTTP ' + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+  async function runAgent(userText, typing) {
+    const actions = [];
+    const convo = busboyHistory.slice(-BUSBOY_HISTORY_TURNS).concat([{ role: 'user', content: userText }]);
+    for (let round = 0; round < BUSBOY_MAX_ROUNDS; round++) {
+      const data = await callBusBoyWorker(convo, round === BUSBOY_MAX_ROUNDS - 1);
+      if (data.reply) return { text: data.reply, actions }; // Worker answered directly (e.g. guardrail)
+      const msg = data.message || {};
+      const calls = (msg.tool_calls || []).filter(c => c && c.function && BUSBOY_TOOLS[c.function.name]);
+      if (!calls.length) return { text: msg.content || "Sorry, I couldn't come up with an answer just now.", actions };
+      convo.push({ role: 'assistant', content: msg.content || null, tool_calls: calls });
+      for (const call of calls) {
+        let args = {};
+        try { args = JSON.parse(call.function.arguments || '{}'); } catch (e) { /* model sent bad JSON */ }
+        typing.set(TOOL_STATUS[call.function.name](args));
+        let result;
+        try { result = await BUSBOY_TOOLS[call.function.name](args, actions); }
+        catch (e) { result = { ok: false, error: 'tool_failed', detail: String(e.message || e) }; }
+        convo.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+      }
+      typing.set('Thinking…');
+    }
+    return { text: "That took me too many steps. Could you ask it a simpler way?", actions };
+  }
 
-    const cached = matchCachedFAQ(text);
-    if (cached) {
-      addMessage(cached, 'bot'); // answered locally — no Worker/API call made
+  function setBusy(on) {
+    busboyBusy = on;
+    chatSendBtn.disabled = on;
+    chatOverlay.classList.toggle('busboy-busy', on);
+  }
+
+  async function handleSend() {
+    const text = chatInput.value.trim();
+    if (!text || busboyBusy) return;
+    chatInput.value = '';
+    addMessage(text, 'user');
+
+    const faq = STATIC_FAQ.find(f => f.test.test(text));
+    if (faq) {
+      const answer = faq.answer();
+      addMessage(answer, 'bot', { source: 'Instant answer' });
+      busboyHistory.push({ role: 'user', content: text }, { role: 'assistant', content: answer });
       return;
     }
-    sendToBusBoy(text);
-  }
 
-  document.getElementById('chatSend').addEventListener('click', handleSend);
+    setBusy(true);
+    const typing = addTyping('Thinking…');
+    try {
+      const { text: reply, actions } = await runAgent(text, typing);
+      typing.remove();
+      addMessage(reply, 'bot', { actions });
+      busboyHistory.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
+    } catch (err) {
+      console.warn('BusBoy AI unavailable, using local answers.', err);
+      const actions = [];
+      let fallback = null;
+      try { fallback = await localIntentAnswer(text, actions); } catch (e) { console.warn(e); }
+      typing.remove();
+      const why = err.status === 429 ? "I've hit my free AI limit for now" : "I can't reach my AI brain right now";
+      if (fallback) {
+        addMessage(fallback, 'bot', { actions, source: why + ' — answered from the app' });
+        busboyHistory.push({ role: 'user', content: text }, { role: 'assistant', content: fallback });
+      } else {
+        addMessage(why + '. Try the quick buttons below — they work offline.', 'bot');
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+  chatSendBtn.addEventListener('click', handleSend);
   chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSend(); });
+  renderHero();
 </script>
 
 </body>
