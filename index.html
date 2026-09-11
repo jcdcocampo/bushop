@@ -3719,6 +3719,12 @@
   }
 
   busSheetGetDirectionsBtn.addEventListener('click', () => {
+    if (busSheetGetDirectionsBtn.classList.contains('active')) { // second tap cancels the directions
+      clearGuideRoute();
+      busSheetGuideInfo.classList.add('hidden');
+      collapseDirections();
+      return;
+    }
     expandDirections();
     const bus = fleet.find(b => b.id === trackedBusId);
     if (bus) guideToBus(bus);
@@ -5634,25 +5640,87 @@
       .replace(/^(the|a|ang)\s+/i, '')
       .replace(/[?!.]+$/g, '').replace(/\s+/g, ' ').trim();
   }
-  function parseFareQuery(text) {
-    const t = ' ' + text.replace(/[?!]+/g, ' ') + ' ';
-    const stopTo = '(?=\\s+(?:to|going to|papunta sa|papuntang|papunta|patungong|towards)\\s|\\s*$)';
-    const stopFrom = '(?=\\s+(?:from|mula sa|mula|galing sa|galing|origin)\\s|\\s*$)';
-    const fromM = t.match(new RegExp('\\s(?:from|mula sa|mula|galing sa|galing)\\s+(.+?)' + stopTo, 'i'));
-    let toM = t.match(new RegExp('\\s(?:to|going to|papunta sa|papuntang|papunta|patungong|for|sa|towards)\\s+(.+?)' + stopFrom, 'i'));
-    let origin = fromM ? cleanPlacePhrase(fromM[1]) : null;
-    let dest = toM ? cleanPlacePhrase(toM[1]) : null;
+  /* ---------- Understanding trip questions ----------
+     "now at alaminos, i want to go to baguio. nearest bus and how much?"
+       origin: after "from / now at / I'm at / taga / nasa / mula"; destination: after "to / go to / papunta".
+     A place ends at punctuation or a question word; the longest run of words that is a known place wins.
+     Vague "at"/"in" only count when they name a known place (so "at 5pm" isn't a place). */
+  const PLACE_STOP_WORDS = new Set(('nearest next and how what whats what\'s where when which who is are bus buses fare fares pamasahe magkano ' +
+    'magkanu much price presyo please po today tomorrow tonight now with via trip trips biyahe byahe i im i\'m want need going go to from ' +
+    'the a an my me ride sakay can could would should will do does there here ba ako na ang ng kung ' +
+    'at in on by around before after am pm papuntang papunta patungong towards mula galing taga nasa sa dito').split(' '));
+  function placeFromPhrase(phrase, requireKnown) {
+    // keep abbreviations like "Sta." / "Sto." / "Brgy." inside a place name when cutting at sentence ends
+    const seg = String(phrase || '').replace(/\b(sta|sto|st|brgy|gen|pres|mt|ave|blvd)\./gi, '$1\u00a7').split(/[.?!;]|\s[-–]\s/)[0].replace(/\u00a7/g, '.');
+    const words = seg.replace(/[^a-zñ0-9.,' -]+/gi, ' ').trim().split(/\s+/).filter(Boolean);
+    const run = [];
+    for (const w of words) {
+      const bare = w.toLowerCase().replace(/[,.]+$/, '');
+      if (PLACE_STOP_WORDS.has(bare) || /\d/.test(bare)) { if (run.length) break; else continue; } // times like "5pm" end a place too
+      run.push(w);
+      if (/,$/.test(w) && run.length >= 1 && !/^(pampanga|pangasinan|zambales|tarlac|bulacan|isabela|cagayan|benguet|la|nueva)/i.test(words[words.indexOf(w) + 1] || '')) break;
+    }
+    for (let n = run.length; n >= 1; n--) { // longest known place first
+      const cand = run.slice(0, n).join(' ').replace(/[,.]+$/, '');
+      if (matchLocalLandmark(cand)) return cand;
+    }
+    return requireKnown ? null : (cleanPlacePhrase(run.join(' ').replace(/[,.]+$/, '')) || null);
+  }
+  function findPlaceAfter(text, keywordRe, requireKnown, excludeName) {
+    const re = new RegExp('(?:^|[\\s,.;!?])(?:' + keywordRe + ')\\s+(.+)', 'gi');
+    const t = ' ' + text + ' ';
+    let m, fallback = null;
+    const starts = [];
+    const kw = new RegExp('(?:^|[\\s,.;!?])(' + keywordRe + ')\\s+', 'gi');
+    while ((m = kw.exec(t))) { starts.push(m.index + m[0].length); kw.lastIndex = m.index + m[0].length - 1; }
+    for (const i of starts) {
+      const rest = t.slice(i);
+      const same = p => p && excludeName && p.toLowerCase().replace(/\./g, '') === excludeName.toLowerCase().replace(/\./g, '');
+      const known = placeFromPhrase(rest, true);
+      if (known && !same(known)) return known;
+      const loose = !requireKnown && !fallback ? placeFromPhrase(rest, false) : null;
+      if (loose && !same(loose)) fallback = loose;
+    }
+    return fallback;
+  }
+  function parseTripQuery(text) {
+    const t = String(text || '');
+    let origin = findPlaceAfter(t, "from|mula sa|mula|galing sa|galing|taga", false)
+      || findPlaceAfter(t, "now at|i'?m at|im at|i am at|currently at|currently in|i'?m in|im in|i am in|nasa|dito sa|here at|at|in", true);
+    let dest = findPlaceAfter(t, "going to|go to|to|papunta sa|papuntang|papunta|patungong|towards|headed to|bound for|for|sa", false, origin);
     // "Olongapo to Iba fare" / "fare Olongapo to Iba"
     if (!origin) {
       const pair = t.match(/^\s*(?:(?:fares?|pamasahe|how much(?: is)?(?: the)?(?: fare)?)\s+)?(?:from\s+)?([a-zñ.' ]{3,}?)\s+(?:to|papuntang|papunta sa)\s+([a-zñ.' ]{3,})/i);
-      // Only when the first part is a place, not question words ("what is the fare to Iba").
-      if (pair && !/\b(what|how|much|is|are|the|fares?|pamasahe|magkano|ano|price|presyo|cost|ang|i|me|my)\b/i.test(pair[1])) {
+      if (pair && !/\b(what|how|much|is|are|the|fares?|pamasahe|magkano|ano|price|presyo|cost|ang|i|me|my|want|go|going|now|next|nearest|bus|buses|trip|when|which)\b/i.test(pair[1])) {
         origin = cleanPlacePhrase(pair[1]);
-        dest = cleanPlacePhrase(pair[2]);
+        dest = placeFromPhrase(pair[2], false) || cleanPlacePhrase(pair[2]);
       }
     }
+    if (dest && origin && dest.toLowerCase() === origin.toLowerCase()) dest = null;
     if (dest && /^(my location|here|dito)$/i.test(dest)) dest = null;
     return { origin: origin || null, dest: dest || null };
+  }
+  function parseFareQuery(text) { return parseTripQuery(text); }
+
+  // "nearest bus and how much", "next trip and fare" — a bus question and a fare question together.
+  const BUS_INTENT = /\b(nearest|next (bus|trip)|bus (going|to|for)|what time|when is|which bus|trip|biyahe|byahe|sakay|hop on|schedule|ride)\b/i;
+  async function answerTripQuestion(parsed) {
+    const actions = [];
+    const typing = addTyping('Checking buses and fares…');
+    try {
+      const nb = await BUSBOY_TOOLS.nearest_bus(parsed.origin ? { origin: parsed.origin, destination: parsed.dest } : { destination: parsed.dest }, actions);
+      let text = formatNearestBus(nb);
+      const toPlace = await resolvePlace(parsed.dest);
+      const fromPlace = parsed.origin ? await resolvePlace(parsed.origin) : (originCoord ? await resolvePlace('my location') : null);
+      if (toPlace.found && fromPlace && fromPlace.found) text += '\n\n' + formatFareResult(fareResult(fromPlace, toPlace));
+      else if (toPlace.found) text += '\n\nFor the fare, tell me where you’ll board (e.g. “fare from Dagupan to ' + toPlace.name.replace(/ Terminal$/, '') + '”).';
+      typing.remove();
+      addMessage(text, 'bot', { actions, source: 'Instant answer' });
+      busboyHistory.push({ role: 'assistant', content: text });
+    } catch (e) {
+      typing.remove();
+      throw e;
+    }
   }
 
   function addBot(text, opts) {
@@ -5994,6 +6062,17 @@
 
     // Fare matrix conversation (instant, no AI request).
     const isFareQuestion = (FARE_INTENT.test(text) && !NOT_FARE.test(text)) || /^fare calculator$/i.test(text);
+    // Bus + fare in one message: answer both at once when we can tell where they're going.
+    if (isFareQuestion && BUS_INTENT.test(text)) {
+      const parsed = parseTripQuery(text);
+      if (parsed.dest) {
+        fareFlow = null;
+        busboyHistory.push({ role: 'user', content: text });
+        setBusy(true);
+        try { await answerTripQuestion(parsed); } finally { setBusy(false); }
+        return;
+      }
+    }
     if (fareFlow && !isFareQuestion && !FLOW_BREAKERS.test(text)) {
       busboyHistory.push({ role: 'user', content: labelOverride || text });
       setBusy(true);
