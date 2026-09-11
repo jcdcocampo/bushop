@@ -1207,7 +1207,10 @@
      ========================================================= */
   const ZAMBALES_ROUTE = [
     [120.9836, 14.6555], // Caloocan (southern terminus)
+    [120.9500, 14.7320], // Meycauayan, Bulacan — forces northward from Caloocan
     [120.8823, 14.8524], // Guiguinto, Bulacan
+    [120.8130, 14.8430], // Malolos, Bulacan — forces the main highway corridor,
+                         // prevents the massive eastern detour through Baliwag/Apalit
     [120.6900, 15.0286], // San Fernando, Pampanga
     [120.4694, 14.8762], // Dinalupihan, Bataan
     [120.2857, 14.8366], // Olongapo City
@@ -1406,7 +1409,7 @@
 
   function applySnappedRoute(coords) {
     buildRouteIndex(coords);
-    console.log('Route built from', coords.length, 'points across 16 legs, total', totalRouteKm.toFixed(1), 'km.');
+    console.log('Route built from', coords.length, 'points across', (ZAMBALES_ROUTE.length - 1), 'legs, total', totalRouteKm.toFixed(1), 'km.');
     if (map.getSource('zambales-route')) {
       map.getSource('zambales-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
     }
