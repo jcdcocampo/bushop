@@ -98,15 +98,6 @@
     cursor: pointer;
   }
 
-  .poi-marker {
-    width: 22px; height: 22px; border-radius: 7px;
-    background: #AF52DE;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 6px rgba(175, 82, 222, 0.4), 0 0 0 2px #FFFFFF;
-    cursor: pointer;
-  }
-  .poi-marker svg { width: 12px; height: 12px; }
-
   .user-marker {
     width: 18px; height: 18px; border-radius: 50%;
     background: var(--accent);
@@ -1081,6 +1072,7 @@
   const devControls = document.getElementById('devControls');
   const devTempInput = document.getElementById('devTempInput');
   const devConditionInput = document.getElementById('devConditionInput');
+  const devTimeInput = document.getElementById('devTimeInput');
 
   devSwitch.addEventListener('click', () => {
     const isOn = devSwitch.classList.toggle('on');
@@ -1110,28 +1102,86 @@
   devTimeInput.addEventListener('input', updateChatSubtitleLive);
 
   /* =========================================================
-     LANDMARKS — route towns, terminals, and one named landmark
-     from the spec (Puregold Tabang, Guiguinto) for BusBoy-style
-     proximity lookups. Coordinates are approximate placeholders.
+     LANDMARKS — route towns, terminals, and notable landmarks
+     (malls, city/municipal halls, parks, tourist spots) along the
+     whole Zambales Line corridor, researched for search purposes
+     only. These are NOT shown on the map itself — they only surface
+     when searching the location/destination fields, so you can find
+     a familiar place name without needing to know its terminal.
+     Coordinates are approximate (nearest known town/POI location),
+     not verified street-level geocodes — treat as a starting point,
+     not survey-grade GPS.
      ========================================================= */
   const LANDMARKS = [
+    // --- Terminals (also searchable) ---
     { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9040, 15.7700] },
-    { name: 'Masinloc', note: 'Zambales', coord: [119.9330, 15.5900] },
-    { name: 'Candelaria', note: 'Zambales', coord: [119.8800, 15.5300] },
     { name: 'Iba Terminal', note: 'Brgy. Palanginan, Iba', coord: [119.9945, 15.3139] },
-    { name: 'Botolan', note: 'Zambales', coord: [119.9600, 15.2800] },
-    { name: 'San Felipe', note: 'Zambales', coord: [120.0500, 15.0900] },
-    { name: 'San Antonio', note: 'Zambales', coord: [120.1444, 15.0958] },
-    { name: 'Subic', note: 'SBMA area', coord: [120.2400, 14.8781] },
     { name: 'Olongapo Terminal', note: 'Anonas St., West Bajac-Bajac', coord: [120.2857, 14.8366] },
-    { name: 'Dinalupihan', note: 'Bataan, SCTEX junction', coord: [120.4694, 14.8762] },
     { name: 'San Fernando Terminal', note: 'Pampanga', coord: [120.6900, 15.0286] },
-    { name: 'Puregold Tabang, Guiguinto', note: 'Landmark near southern corridor', coord: [120.8790, 14.8600] },
     { name: 'Caloocan Terminal', note: 'Rizal Ave. Ext., Grace Park West', coord: [120.9836, 14.6555] },
     { name: 'Cubao Terminal', note: 'Manila-side boarding point', coord: [121.0538, 14.6197] },
     { name: 'Pasay Terminal', note: 'Manila-side boarding point', coord: [121.0011, 14.5453] },
     { name: 'Sampaloc Terminal', note: 'Manila-side boarding point', coord: [120.9910, 14.6060] },
-    { name: 'PITX Terminal', note: 'Manila-side boarding point', coord: [120.9847, 14.5013] }
+    { name: 'PITX Terminal', note: 'Manila-side boarding point', coord: [120.9847, 14.5013] },
+
+    // --- Towns (also searchable) ---
+    { name: 'Masinloc', note: 'Zambales town', coord: [119.9330, 15.5900] },
+    { name: 'Candelaria', note: 'Zambales town', coord: [119.8800, 15.5300] },
+    { name: 'Botolan', note: 'Zambales town', coord: [119.9600, 15.2800] },
+    { name: 'San Felipe', note: 'Zambales town', coord: [120.0500, 15.0900] },
+    { name: 'San Antonio', note: 'Zambales town', coord: [120.1444, 15.0958] },
+    { name: 'San Narciso', note: 'Zambales town', coord: [120.0850, 15.0500] },
+    { name: 'San Marcelino', note: 'Zambales town', coord: [120.1592, 15.0000] },
+    { name: 'Castillejos', note: 'Zambales town', coord: [120.1936, 14.9257] },
+    { name: 'Subic', note: 'SBMA area', coord: [120.2400, 14.8781] },
+    { name: 'Dinalupihan', note: 'Bataan, SCTEX junction', coord: [120.4694, 14.8762] },
+
+    // --- Malls & shopping ---
+    { name: 'SM City Olongapo Central', note: 'Mall, Rizal Ave., Brgy. East Tapinac, Olongapo', coord: [120.2830, 14.8360] },
+    { name: 'Marquee Mall', note: 'Mall, San Fernando, Pampanga', coord: [120.6875, 15.0339] },
+    { name: 'Harbor Point Ayala Mall', note: 'Mall, Subic Bay Freeport Zone', coord: [120.2670, 14.7950] },
+    { name: 'Puregold Tabang, Guiguinto', note: 'Landmark near southern corridor', coord: [120.8790, 14.8600] },
+
+    // --- City/Municipal halls & government ---
+    { name: 'Caloocan City Hall', note: 'Government', coord: [120.9834, 14.6572] },
+    { name: 'Olongapo City Hall', note: 'Government', coord: [120.2820, 14.8290] },
+    { name: 'Zambales Provincial Capitol', note: 'Iba, historic 1878 building', coord: [119.9811, 15.3258] },
+    { name: 'San Fernando City Hall', note: 'Government, Pampanga', coord: [120.6900, 15.0330] },
+
+    // --- Parks, plazas & public spaces ---
+    { name: 'Rizal Triangle / Freedom Park', note: 'Public plaza, Olongapo', coord: [120.2810, 14.8280] },
+    { name: 'Bancal Eco Park', note: 'Riverside park, Botolan', coord: [119.9750, 15.2950] },
+
+    // --- Religious / cultural landmarks ---
+    { name: 'Ina Poon Bato Shrine', note: 'Pilgrimage site, Brgy. Burgos, Botolan', coord: [120.0100, 15.2600] },
+    { name: 'Masinloc Church (St. Andrew the Apostle Parish)', note: 'Historic church, Masinloc', coord: [119.9350, 15.5420] },
+    { name: 'Ramon Magsaysay Ancestral House', note: 'Museum, Castillejos', coord: [120.1950, 14.9280] },
+    { name: 'Casa San Miguel', note: 'Art center & museum, San Antonio', coord: [120.1500, 15.0900] },
+
+    // --- Beaches, coves & islands (San Antonio / San Felipe / San Narciso area) ---
+    { name: 'Anawangin Cove', note: 'Beach camping cove, San Antonio', coord: [120.0700, 15.1500] },
+    { name: 'Nagsasa Cove', note: 'Beach camping cove, San Antonio', coord: [120.0500, 15.1700] },
+    { name: 'Capones Island', note: 'Lighthouse island, San Antonio', coord: [120.0600, 15.1150] },
+    { name: 'Camara Island', note: 'Island, San Antonio', coord: [120.0650, 15.1200] },
+    { name: 'Pundaquit', note: 'Island-hopping jump-off point, San Antonio', coord: [120.1100, 15.1250] },
+    { name: 'Mount Pundaquit', note: 'Hiking spot, San Antonio', coord: [120.1200, 15.1350] },
+    { name: 'Liwliwa Beach', note: 'Surfing beach, San Felipe', coord: [120.0300, 15.1000] },
+    { name: 'Crystal Beach Resort', note: 'Beach resort, San Felipe/San Narciso', coord: [120.0400, 15.0700] },
+
+    // --- Botolan / Iba area ---
+    { name: 'Mount Pinatubo (Botolan jump-off)', note: 'Volcano trek jump-off point', coord: [120.1000, 15.1300] },
+    { name: 'Botolan Wildlife Farm', note: 'Wildlife sanctuary, Botolan', coord: [119.9900, 15.2600] },
+    { name: 'Iba Beach', note: 'Public beach, Iba', coord: [119.9700, 15.3300] },
+
+    // --- North Zambales coast ---
+    { name: 'Magalawa Island', note: 'Island, Palauig', coord: [119.8600, 15.4400] },
+    { name: 'Hermana Mayor & Menor Islands', note: 'Islands off Candelaria', coord: [119.7800, 15.5100] },
+    { name: 'Potipot Island', note: 'White-sand island, Candelaria', coord: [119.8400, 15.5400] },
+
+    // --- Subic Bay Freeport Zone attractions ---
+    { name: 'Zoobic Safari', note: 'Wildlife park, Subic Bay Freeport Zone', coord: [120.2400, 14.7900] },
+    { name: 'Ocean Adventure', note: 'Marine theme park, Subic Bay Freeport Zone', coord: [120.2500, 14.7970] },
+    { name: 'Subic Bay Yacht Club', note: 'Subic Bay Freeport Zone', coord: [120.2750, 14.7900] }
   ];
 
   // The 5 major terminals to always mark distinctly on the map (per spec).
@@ -1145,18 +1195,6 @@
     { name: 'Olongapo Terminal', note: 'Anonas St., West Bajac-Bajac', coord: [120.2857, 14.8366] },
     { name: 'Iba Terminal', note: 'Brgy. Palanginan, provincial capital', coord: [119.9945, 15.3139] },
     { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9040, 15.7700] }
-  ];
-
-  // Fix #2: non-terminal landmarks (malls, halls, parks) to help
-  // commuters recognize where they are relative to their destination.
-  // Coordinates are approximate best-effort estimates, not verified
-  // street-level geocodes — worth spot-checking before relying on them.
-  const POI_LANDMARKS = [
-    { name: 'Caloocan City Hall', category: 'City Hall', coord: [120.9834, 14.6572] },
-    { name: 'Marquee Mall', category: 'Mall', coord: [120.6875, 15.0339] },
-    { name: 'SM City Olongapo Central', category: 'Mall', coord: [120.2830, 14.8360] },
-    { name: 'Zambales Provincial Capitol', category: 'Government', coord: [119.9811, 15.3258] },
-    { name: 'Subic Bay Freeport Zone (main gate)', category: 'Landmark', coord: [120.2500, 14.8100] }
   ];
 
   /* =========================================================
@@ -1226,24 +1264,10 @@
         .addTo(map);
     });
 
-    // Fix #2: non-terminal landmarks (malls, halls, etc.) for orientation.
-    POI_LANDMARKS.forEach(p => {
-      new maplibregl.Marker({ element: makePoiEl() })
-        .setLngLat(p.coord)
-        .setPopup(new maplibregl.Popup({ offset: 14 }).setHTML('<strong>' + p.name + '</strong><span>' + p.category + '</span>'))
-        .addTo(map);
-    });
-
     createFleet();
   });
 
   function makeTerminalEl() { const el = document.createElement('div'); el.className = 'terminal-marker'; return el; }
-  function makePoiEl() {
-    const el = document.createElement('div');
-    el.className = 'poi-marker';
-    el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 21V9l8-6 8 6v12M9 21v-6h6v6" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    return el;
-  }
   function makeBusEl() {
     const el = document.createElement('div');
     el.className = 'bus-marker';
