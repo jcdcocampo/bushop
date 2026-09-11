@@ -98,6 +98,15 @@
     cursor: pointer;
   }
 
+  .poi-marker {
+    width: 22px; height: 22px; border-radius: 7px;
+    background: #AF52DE;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(175, 82, 222, 0.4), 0 0 0 2px #FFFFFF;
+    cursor: pointer;
+  }
+  .poi-marker svg { width: 12px; height: 12px; }
+
   .user-marker {
     width: 18px; height: 18px; border-radius: 50%;
     background: var(--accent);
@@ -578,10 +587,32 @@
   .bus-sheet-eta-value { font-size: 28px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
   .bus-sheet-eta-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
-  .bus-sheet-actions { display: flex; gap: 10px; }
+  .bus-sheet-actions { display: flex; gap: 10px; margin-top: 14px; }
   .bus-sheet-actions .btn-primary,
   .bus-sheet-actions .btn-secondary { flex: 1; padding: 13px; }
   .bus-sheet-actions .btn-secondary { background: var(--dev-pill-bg); color: var(--text-primary); }
+
+  /* Fix #6: distinct visual language for "just tracking" vs "getting
+     directions" so the two entry points don't look/feel identical. */
+  .link-btn {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    text-align: center;
+    padding: 10px 0 4px;
+    cursor: pointer;
+  }
+
+  .bus-sheet-directions-section {
+    margin-top: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+  }
 
   .bus-sheet-guide-info {
     margin-top: 14px;
@@ -591,6 +622,32 @@
     font-size: 13px;
     color: var(--text-primary);
     text-align: center;
+  }
+
+  /* Fix #5: Dev-only "I'm riding this bus" toggle — visually flagged
+     as a testing tool, not a real user-facing feature. */
+  .ride-toggle-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%;
+    margin-top: 14px;
+    background: rgba(255, 149, 0, 0.1);
+    border: 1.5px dashed #FF9500;
+    color: #B25900;
+    border-radius: 12px;
+    padding: 11px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .ride-toggle-btn.active {
+    background: #FF9500;
+    color: #fff;
+    border-style: solid;
+  }
+  .dev-tag {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.03em;
+    background: rgba(0,0,0,0.15); padding: 1px 5px; border-radius: 5px;
   }
 
   /* ---------- TRAVEL MODE PICKER (Fix #5) ---------- */
@@ -681,6 +738,21 @@
   }
   .bus-option-plate { font-size: 15px; font-weight: 600; margin-top: 2px; }
   .bus-option-eta { font-size: 16px; font-weight: 700; color: var(--accent); }
+
+  .cancel-pill {
+    display: block;
+    margin: 4px auto 0;
+    background: var(--dev-pill-bg);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 12px 32px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .cancel-pill:active { background: #DCDCE1; }
 
   /* ---------- ACCESSIBILITY BASELINE ---------- */
   button:focus-visible,
@@ -831,7 +903,7 @@
       <div class="bus-sheet-handle"></div>
       <div class="bus-options-title">Choose a bus</div>
       <div class="bus-options-list" id="busOptionsList"></div>
-      <button class="btn-secondary" id="busOptionsCancel" type="button">Cancel</button>
+      <button class="cancel-pill" id="busOptionsCancel" type="button">Cancel</button>
     </div>
   </div>
 
@@ -867,18 +939,31 @@
       </div>
       <div class="bus-sheet-eta">
         <span class="bus-sheet-eta-value" id="busSheetEtaValue">—</span>
-        <span class="bus-sheet-eta-label">Estimated arrival</span>
+        <span class="bus-sheet-eta-label" id="busSheetEtaLabel">Estimated arrival</span>
       </div>
-      <div class="bus-sheet-mode-picker">
-        <button class="mode-btn active" data-mode="foot" type="button">🚶 Walk</button>
-        <button class="mode-btn" data-mode="motorcycle" type="button">🏍️ Habal-habal</button>
-        <button class="mode-btn" data-mode="car" type="button">🚗 Ride</button>
+
+      <!-- Fix #6: Track and Guide now diverge visibly — this link only
+           appears until directions are actually requested. -->
+      <button class="link-btn" id="busSheetGetDirections" type="button">Get directions to this bus →</button>
+
+      <div class="bus-sheet-directions-section hidden" id="busSheetDirectionsSection">
+        <div class="bus-sheet-mode-picker">
+          <button class="mode-btn active" data-mode="foot" type="button">🚶 Walk</button>
+          <button class="mode-btn" data-mode="motorcycle" type="button">🏍️ Habal-habal</button>
+          <button class="mode-btn" data-mode="car" type="button">🚗 Ride</button>
+        </div>
+        <button class="btn-primary" id="busSheetGuide" style="width:100%; margin-bottom:10px;">Recalculate Route</button>
+        <div class="bus-sheet-guide-info hidden" id="busSheetGuideInfo"></div>
       </div>
+
+      <!-- Fix #5: Dev-only — simulate having boarded this specific bus. -->
+      <button class="ride-toggle-btn hidden" id="busSheetRideToggle" type="button">
+        🚌 I'm Riding This Bus <span class="dev-tag">DEV</span>
+      </button>
+
       <div class="bus-sheet-actions">
-        <button class="btn-secondary" id="busSheetUntrack">Stop Tracking</button>
-        <button class="btn-primary" id="busSheetGuide">Take Me to This Bus</button>
+        <button class="btn-secondary" id="busSheetUntrack" style="width:100%;">Stop Tracking</button>
       </div>
-      <div class="bus-sheet-guide-info hidden" id="busSheetGuideInfo"></div>
     </div>
   </div>
 
@@ -1010,10 +1095,19 @@
     } else {
       renderWeather(liveCondition, liveTemp); // hand control back to live data
     }
+    updateRideToggleVisibility();
+    updateChatSubtitleLive();
   });
 
-  devTempInput.addEventListener('input', () => renderWeather(devConditionInput.value, devTempInput.value));
-  devConditionInput.addEventListener('change', () => renderWeather(devConditionInput.value, devTempInput.value));
+  devTempInput.addEventListener('input', () => {
+    renderWeather(devConditionInput.value, devTempInput.value);
+    updateChatSubtitleLive();
+  });
+  devConditionInput.addEventListener('change', () => {
+    renderWeather(devConditionInput.value, devTempInput.value);
+    updateChatSubtitleLive();
+  });
+  devTimeInput.addEventListener('input', updateChatSubtitleLive);
 
   /* =========================================================
      LANDMARKS — route towns, terminals, and one named landmark
@@ -1053,26 +1147,29 @@
     { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9040, 15.7700] }
   ];
 
+  // Fix #2: non-terminal landmarks (malls, halls, parks) to help
+  // commuters recognize where they are relative to their destination.
+  // Coordinates are approximate best-effort estimates, not verified
+  // street-level geocodes — worth spot-checking before relying on them.
+  const POI_LANDMARKS = [
+    { name: 'Caloocan City Hall', category: 'City Hall', coord: [120.9834, 14.6572] },
+    { name: 'Marquee Mall', category: 'Mall', coord: [120.6875, 15.0339] },
+    { name: 'SM City Olongapo Central', category: 'Mall', coord: [120.2830, 14.8360] },
+    { name: 'Zambales Provincial Capitol', category: 'Government', coord: [119.9811, 15.3258] },
+    { name: 'Subic Bay Freeport Zone (main gate)', category: 'Landmark', coord: [120.2500, 14.8100] }
+  ];
+
   /* =========================================================
      MAP
      Route waypoints follow the Zambales Line's "Inner Cities" path
-     (Caloocan -> San Fernando -> Dinalupihan -> Olongapo -> up the
-     coast to Sta. Cruz). Two corrections from the previous version:
-     1. Removed "Guiguinto" as a forced waypoint. It sits on the
-        real highway path between Caloocan and San Fernando anyway,
-        so forcing it explicitly was inviting OSRM to snap to a
-        nearby-but-wrong local road and loop through it — that's
-        what produced the Bagong Silang detour. Letting OSRM find
-        its own path between Caloocan and San Fernando follows the
-        highway naturally without the forced detour.
-     2. Tightened the snap radius (see fetchSnappedRoute below) from
-        5km to 1.2km. The wider radius was letting waypoints snap to
-        distant local/dead-end roads instead of the through-highway,
-        which is what caused the small loops and spurs seen near
-        Subic, Castillejos, Maloma, and a few other points.
+     (Caloocan -> Guiguinto -> San Fernando -> Dinalupihan -> Olongapo
+     -> up the coast to Sta. Cruz). Reverted to this version after
+     the last attempt (removing Guiguinto, tightening snap radius)
+     made things worse rather than better.
      ========================================================= */
   const ZAMBALES_ROUTE = [
     [120.9836, 14.6555], // Caloocan (southern terminus)
+    [120.8823, 14.8524], // Guiguinto, Bulacan
     [120.6900, 15.0286], // San Fernando, Pampanga
     [120.4694, 14.8762], // Dinalupihan, Bataan
     [120.2857, 14.8366], // Olongapo City
@@ -1129,10 +1226,24 @@
         .addTo(map);
     });
 
+    // Fix #2: non-terminal landmarks (malls, halls, etc.) for orientation.
+    POI_LANDMARKS.forEach(p => {
+      new maplibregl.Marker({ element: makePoiEl() })
+        .setLngLat(p.coord)
+        .setPopup(new maplibregl.Popup({ offset: 14 }).setHTML('<strong>' + p.name + '</strong><span>' + p.category + '</span>'))
+        .addTo(map);
+    });
+
     createFleet();
   });
 
   function makeTerminalEl() { const el = document.createElement('div'); el.className = 'terminal-marker'; return el; }
+  function makePoiEl() {
+    const el = document.createElement('div');
+    el.className = 'poi-marker';
+    el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 21V9l8-6 8 6v12M9 21v-6h6v6" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return el;
+  }
   function makeBusEl() {
     const el = document.createElement('div');
     el.className = 'bus-marker';
@@ -1213,7 +1324,7 @@
      ========================================================= */
   async function fetchSnappedRoute(waypoints) {
     const coordStr = waypoints.map(c => c[0] + ',' + c[1]).join(';');
-    const radiusStr = waypoints.map(() => '1200').join(';'); // 1.2km snap tolerance per point
+    const radiusStr = waypoints.map(() => '5000').join(';'); // 5km snap tolerance per point
     const url = 'https://router.project-osrm.org/route/v1/driving/' + coordStr +
       '?overview=full&geometries=geojson&radiuses=' + radiusStr;
     const res = await fetch(url);
@@ -1414,7 +1525,7 @@
       if (bus) openBusSheet(bus);
     } else if (guideBtn) {
       const bus = fleet.find(b => b.id === Number(guideBtn.dataset.busId));
-      if (bus) { openBusSheet(bus); guideToBus(bus); }
+      if (bus) { openBusSheet(bus, { expandDirections: true }); guideToBus(bus); }
     }
   });
 
@@ -1499,8 +1610,28 @@
   }
 
   const ecTrackBtn = document.querySelector('.eta-card .track-btn');
+  const busSheetGetDirectionsBtn = document.getElementById('busSheetGetDirections');
+  const busSheetDirectionsSection = document.getElementById('busSheetDirectionsSection');
+  const busSheetRideToggle = document.getElementById('busSheetRideToggle');
+  const busSheetEtaLabel = document.getElementById('busSheetEtaLabel');
+  let isRidingBus = false;
 
-  function openBusSheet(bus) {
+  function updateRideToggleVisibility() {
+    busSheetRideToggle.classList.toggle('hidden', !devSwitch.classList.contains('on'));
+  }
+
+  function expandDirections() {
+    busSheetGetDirectionsBtn.classList.add('hidden');
+    busSheetDirectionsSection.classList.remove('hidden');
+  }
+
+  function collapseDirections() {
+    busSheetGetDirectionsBtn.classList.remove('hidden');
+    busSheetDirectionsSection.classList.add('hidden');
+  }
+
+  function openBusSheet(bus, opts) {
+    opts = opts || {};
     const isNewBus = trackedBusId !== bus.id;
     trackedBusId = bus.id;
     busSheetPlate.textContent = bus.plate;
@@ -1509,8 +1640,12 @@
     if (isNewBus) {
       busSheetGuideInfo.classList.add('hidden');
       clearGuideRoute();
+      collapseDirections();
+      if (isRidingBus) toggleRiding(); // switching tracked bus cancels any active ride simulation
     }
+    if (opts.expandDirections) expandDirections();
     setTrackedMarkerVisual(bus.id);
+    updateRideToggleVisibility();
     ecTrackBtn.textContent = '▲ View Tracked Bus';
     busSheetOverlay.classList.add('open');
   }
@@ -1550,9 +1685,13 @@
     clearGuideRoute();
     setTrackedMarkerVisual(null);
     ecTrackBtn.textContent = 'Track this Bus';
+    if (isRidingBus) toggleRiding();
   }
 
   document.getElementById('busSheetClose').addEventListener('click', minimizeBusSheet);
+  busSheetOverlay.addEventListener('click', (e) => {
+    if (e.target === busSheetOverlay) minimizeBusSheet();
+  });
   document.getElementById('busSheetUntrack').addEventListener('click', stopTracking);
 
   // Basic swipe-down-to-minimize on the sheet's handle.
@@ -1586,14 +1725,69 @@
   });
 
   /* =========================================================
-     "TAKE ME TO THIS BUS" — Fix #5: real road geometry from OSRM,
-     but the displayed time is always computed from OSRM's distance
-     using our own honest assumed speed per mode, never OSRM's raw
-     duration field. (Testing showed the foot-profile duration on
-     this demo server was unreliable — e.g. 8.4km in 11 minutes,
-     which is a driving speed, not a walking one. Distance from the
-     road network is trustworthy either way, so we keep that and
-     replace only the time estimate.)
+     FIX #5 — DEV MODE "I'M RIDING THIS BUS"
+     Recolors the full Zambales Line faint red (de-emphasized
+     context) and draws the rider's own origin-to-destination
+     sub-path in accent blue on top, isolating "my trip" visually
+     from the rest of the line. Dev-only, for demoing the concept.
+     ========================================================= */
+  function sliceRouteCoords(dMin, dMax) {
+    const coords = [pointAtDistance(dMin)];
+    for (let i = 0; i < cumulativeKm.length; i++) {
+      if (cumulativeKm[i] > dMin && cumulativeKm[i] < dMax) coords.push(ROUTE_COORDS[i]);
+    }
+    coords.push(pointAtDistance(dMax));
+    return coords;
+  }
+
+  function toggleRiding() {
+    isRidingBus = !isRidingBus;
+    busSheetRideToggle.classList.toggle('active', isRidingBus);
+
+    if (isRidingBus) {
+      if (map.getLayer('zambales-route-line')) {
+        map.setPaintProperty('zambales-route-line', 'line-color', '#FF6961');
+        map.setPaintProperty('zambales-route-line', 'line-opacity', 0.4);
+      }
+      const bus = fleet.find(b => b.id === trackedBusId);
+      const originDist = originCoord ? distanceAlongRouteForCoord(originCoord) : (bus ? bus.distanceKm : 0);
+      const destDist = destinationCoord
+        ? distanceAlongRouteForCoord(destinationCoord)
+        : (bus && bus.direction === 1 ? totalRouteKm : 0);
+      const dMin = Math.min(originDist, destDist), dMax = Math.max(originDist, destDist);
+      const myTripCoords = sliceRouteCoords(dMin, dMax);
+
+      if (map.getSource('my-trip-route')) {
+        map.getSource('my-trip-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: myTripCoords } });
+      } else {
+        map.addSource('my-trip-route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: myTripCoords } } });
+        map.addLayer({
+          id: 'my-trip-route-line', type: 'line', source: 'my-trip-route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#007AFF', 'line-width': 5, 'line-opacity': 0.9 }
+        });
+      }
+    } else {
+      if (map.getLayer('zambales-route-line')) {
+        map.setPaintProperty('zambales-route-line', 'line-color', '#007AFF');
+        map.setPaintProperty('zambales-route-line', 'line-opacity', 0.85);
+      }
+      if (map.getLayer('my-trip-route-line')) map.removeLayer('my-trip-route-line');
+      if (map.getSource('my-trip-route')) map.removeSource('my-trip-route');
+    }
+  }
+
+  busSheetRideToggle.addEventListener('click', toggleRiding);
+
+  /* =========================================================
+     "GET DIRECTIONS TO THIS BUS" — Fix #5: real road geometry from
+     OSRM, but the displayed time is always computed from OSRM's
+     distance using our own honest assumed speed per mode, never
+     OSRM's raw duration field. (Testing showed the foot-profile
+     duration on this demo server was unreliable — e.g. 8.4km in 11
+     minutes, which is a driving speed, not a walking one. Distance
+     from the road network is trustworthy either way, so we keep
+     that and replace only the time estimate.)
      ========================================================= */
   const ASSUMED_SPEED_KMH = { foot: 4.5, motorcycle: 30, car: 22 };
   const MODE_OSRM_PROFILE = { foot: 'foot', motorcycle: 'driving', car: 'driving' };
@@ -1670,6 +1864,12 @@
       busSheetGuideInfo.textContent = "Couldn't find real-road directions right now — try again in a moment.";
     }
   }
+
+  busSheetGetDirectionsBtn.addEventListener('click', () => {
+    expandDirections();
+    const bus = fleet.find(b => b.id === trackedBusId);
+    if (bus) guideToBus(bus);
+  });
 
   document.getElementById('busSheetGuide').addEventListener('click', () => {
     const bus = fleet.find(b => b.id === trackedBusId);
@@ -1770,6 +1970,9 @@
   document.getElementById('busOptionsCancel').addEventListener('click', () => {
     busOptionsOverlay.classList.remove('open');
   });
+  busOptionsOverlay.addEventListener('click', (e) => {
+    if (e.target === busOptionsOverlay) busOptionsOverlay.classList.remove('open');
+  });
 
   /* =========================================================
      DYNAMIC CHAT BUTTON POSITION — Fix #3: 
@@ -1787,8 +1990,19 @@
   const DESKTOP_BREAKPOINT = 700;
 
   function updateChatLaunchPosition() {
-    if (bottomStack.style.display === 'none') return; // pin mode hides the stack
     const navControl = document.querySelector('.maplibregl-ctrl-bottom-right');
+
+    // Fix #7: while pinning, anchor to the pin-mode action row instead of
+    // the (hidden) bottom-stack, so the chat button follows it down rather
+    // than leaving a big static gap.
+    if (bottomStack.style.display === 'none') {
+      const pinRect = pinModeActions.getBoundingClientRect();
+      const gap = 14;
+      chatLaunchBtn.style.right = '';
+      chatLaunchBtn.style.bottom = Math.max(16, window.innerHeight - pinRect.top + gap) + 'px';
+      return;
+    }
+
     const isDesktop = window.innerWidth > DESKTOP_BREAKPOINT;
 
     if (isDesktop) {
@@ -1806,7 +2020,9 @@
       if (navControl) navControl.style.marginBottom = (bottomOffset + 50 + 10) + 'px'; // clear the chat button too
     }
   }
+  const pinModeActions = document.getElementById('pinModeOverlay').querySelector('.pin-mode-actions');
   new ResizeObserver(updateChatLaunchPosition).observe(bottomStack);
+  new ResizeObserver(updateChatLaunchPosition).observe(pinModeActions);
   window.addEventListener('resize', updateChatLaunchPosition);
   updateChatLaunchPosition();
 
@@ -1927,12 +2143,14 @@
     pinModeTarget = target;
     pinModeOverlay.classList.remove('hidden');
     bottomStack.style.display = 'none';
+    updateChatLaunchPosition();
   }
 
   function exitPinMode() {
     pinModeOverlay.classList.add('hidden');
     bottomStack.style.display = 'flex';
     pinModeTarget = null;
+    updateChatLaunchPosition();
   }
 
   document.getElementById('pinButton').addEventListener('click', () => enterPinMode('origin'));
@@ -2057,17 +2275,33 @@
   function getGreeting() {
     const hour = getEffectiveHour();
     const timeOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
-    const timeLabel = timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1);
+    const bucket = bucketForHour(hour);
 
-    const variants = {
-      sunny: { sub: 'Clear skies — smooth ride ahead.' },
-      'partly-cloudy': { sub: 'Fair weather along the line today.' },
-      cloudy: { sub: 'Overcast today — buses running close to normal.' },
-      rainy: { sub: "Don't forget your umbrella!" },
-      stormy: { sub: 'Stay safe — buses may run slower than usual.' }
-    };
-    const variant = variants[currentCondition] || variants['partly-cloudy'];
-    return { title: 'Good ' + timeOfDay + ', BUSahero', sub: variant.sub, timeLabel };
+    const conditionPhrase = {
+      sunny: 'clear skies', 'partly-cloudy': 'fair weather', cloudy: 'overcast skies',
+      rainy: 'rain', stormy: 'stormy weather'
+    }[currentCondition] || 'fair weather';
+
+    let tempPhrase = '';
+    if (currentTemp >= 33) tempPhrase = ', and it\u2019s hot out';
+    else if (currentTemp <= 23) tempPhrase = ', and it\u2019s cool out';
+
+    let trafficPhrase = '';
+    if (bucket === 'peak') trafficPhrase = ' Buses are running slower than usual with peak traffic.';
+    else if (bucket === 'night') trafficPhrase = ' Roads are quiet tonight.';
+
+    let sub = 'It\u2019s ' + conditionPhrase + tempPhrase + ' right now (' + Math.round(currentTemp) + '\u00b0C).' + trafficPhrase;
+    if (currentCondition === 'rainy') sub += ' Don\u2019t forget your umbrella!';
+    if (currentCondition === 'stormy') sub = 'Stormy weather right now (' + Math.round(currentTemp) + '\u00b0C) \u2014 stay safe, buses may run much slower.';
+
+    return { title: 'Good ' + timeOfDay + ', BUSahero', sub, timeLabel: timeOfDay };
+  }
+
+  // Fix #8: keeps BusBoy's subtitle in sync with Dev Mode's time/temp/sky
+  // sliders in real time, even if the chat panel is already open or has
+  // never been opened yet — not just at the moment it's first launched.
+  function updateChatSubtitleLive() {
+    chatHeaderSub.textContent = getGreeting().sub;
   }
 
   function addMessage(text, sender) {
@@ -2082,9 +2316,9 @@
   function openChat() {
     chatOverlay.classList.add('open');
     chatInput.focus();
+    chatHeaderSub.textContent = getGreeting().sub;
     if (!chatOpened) {
       const greeting = getGreeting();
-      chatHeaderSub.textContent = greeting.sub;
       addMessage(greeting.title + '. ' + greeting.sub + ' Ask me about fares, terminals, or your next bus.', 'bot');
       chatOpened = true;
     }
