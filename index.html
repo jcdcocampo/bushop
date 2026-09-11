@@ -2846,7 +2846,9 @@
   }
 
   // Returns null if the leg looks right, otherwise a short reason string.
-  function legProblem(geom, a, b, winding) {
+  // relaxed = expressway legs (tens of km between verified points, with interchange loops and ramps) and the
+  // short Metro feeders into Balintawak: allow loops/curves, but still reject routes that are far too long or off-corridor.
+  function legProblem(geom, a, b, winding, relaxed) {
     const kx = 111.32 * Math.cos(a[1] * Math.PI / 180), ky = 110.57;
     const bx = (b[0] - a[0]) * kx, by = (b[1] - a[1]) * ky;
     const chord = Math.hypot(bx, by) || 1e-6;
@@ -2860,11 +2862,12 @@
       furthest = Math.max(furthest, along);
       maxBacktrack = Math.max(maxBacktrack, furthest - along);
     }
-    const maxLen = winding ? chord * 3.5 + 1 : chord * 1.6 + 1;
-    const devLimit = winding ? Math.max(2, chord * 0.8) : Math.max(0.75, chord * 0.4);
+    const maxLen = relaxed ? chord * 1.9 + 3 : winding ? chord * 3.5 + 1 : chord * 1.6 + 1;
+    const devLimit = relaxed ? Math.max(3, chord * 0.5) : winding ? Math.max(2, chord * 0.8) : Math.max(0.75, chord * 0.4);
+    const backtrackLimit = relaxed ? Math.max(2.5, chord * 0.08) : 0.4;
     if (len > maxLen) return 'too long (' + len.toFixed(1) + ' km vs ' + chord.toFixed(1) + ' km gap)';
     if (maxDev > devLimit) return 'strays ' + maxDev.toFixed(2) + ' km off the corridor';
-    if (!winding && maxBacktrack > 0.4) return 'doubles back ' + maxBacktrack.toFixed(2) + ' km';
+    if (!winding && maxBacktrack > backtrackLimit) return 'doubles back ' + maxBacktrack.toFixed(2) + ' km';
     return null;
   }
 
@@ -2900,6 +2903,9 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   async function fetchSnappedLegs(route) {
     const ROUTE_ANCHORS = route.anchors;
+    const ex = route.expressway;
+    const relaxedLegs = new Set(ex ? [ex.bal, ex.cand].concat(ex.zone2 ? [ex.zone2.from] : []) : []);
+    if (route.origin && route.origin !== 'pasay') relaxedLegs.add(0); // Caloocan / Sampaloc feeder into Balintawak
     const legs = route.straightLegs();
     const source = legs.map(() => 'straight');
     const rejected = [];
@@ -2933,7 +2939,7 @@
         if (geom.length < 2) return;
         geom[0] = ROUTE_ANCHORS[i].slice(0, 2);
         geom[geom.length - 1] = ROUTE_ANCHORS[i + 1].slice(0, 2);
-        const problem = legProblem(geom, ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1], ROUTE_ANCHORS[i + 1][2] === 'winding');
+        const problem = legProblem(geom, ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1], ROUTE_ANCHORS[i + 1][2] === 'winding', relaxedLegs.has(i));
         if (problem) { rejected.push('leg ' + i + ': ' + problem); return; }
         legs[i] = geom; source[i] = 'road';
         snappedLegCache.set(legKey(ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1]), geom);
