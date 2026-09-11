@@ -212,6 +212,19 @@
     max-width: 190px;
   }
 
+  /* Clock sits at the top of the weather capsule. Always Philippine time. */
+  .clock-block {
+    display: flex; flex-direction: column; gap: 1px; width: 100%;
+    padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--hairline);
+  }
+  .clock-time { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .clock-date { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .clock-badge {
+    background: var(--dev-pill-bg); color: var(--dev-pill-text);
+    font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 1px 5px; border-radius: var(--radius-pill);
+  }
+
   .weather-row { display: flex; align-items: center; gap: 6px; }
   .weather-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .weather-icon svg { width: 22px; height: 22px; }
@@ -236,6 +249,14 @@
     padding: 3px 6px; border-radius: 6px; width: 74px;
   }
   .dev-controls select { width: auto; }
+  .dev-controls input[type="time"] { width: 104px; }
+  .dev-controls input[type="range"] { width: 80px; accent-color: var(--accent); margin: 0; }
+  .dev-speed-value { font-size: 11px; font-weight: 600; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+  .dev-now-btn {
+    border: none; background: var(--dev-pill-bg); color: var(--accent);
+    font-family: inherit; font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 6px; cursor: pointer;
+  }
 
   /* ---------- BOTTOM STACK (fixes overlap: flex column, no guessed offsets) ---------- */
   .bottom-stack {
@@ -342,6 +363,9 @@
   }
   .chat-launch:active { background: var(--accent-pressed); transform: scale(0.94); }
   .chat-launch svg { width: 22px; height: 22px; }
+  .chat-launch .icon-close { display: none; }
+  .chat-launch.is-open .icon-chat { display: none; }
+  .chat-launch.is-open .icon-close { display: block; }
 
   /* ---------- LOCATION PERMISSION MODAL ---------- */
   .permission-overlay {
@@ -773,6 +797,36 @@
     outline-offset: 1px;
   }
 
+  /* ---------- DESKTOP (matches DESKTOP_QUERY in the script) ----------
+     Zoom/compass move to the right-middle, and BusBoy opens as a
+     support-style popover above its button instead of a bottom sheet.
+     No backdrop, so the map stays usable while chatting. */
+  @media (min-width: 701px) {
+    .maplibregl-ctrl-top-right { top: 50%; transform: translateY(-50%); }
+    .maplibregl-ctrl-top-right .maplibregl-ctrl { margin-top: 0; }
+    .maplibregl-ctrl-top-right { transition: opacity 0.18s ease; }
+    body.chat-open .maplibregl-ctrl-top-right { opacity: 0; pointer-events: none; } /* popover covers that edge */
+
+    .chat-overlay { background: transparent; pointer-events: none !important; }
+    .chat-sheet {
+      position: fixed;
+      right: var(--chat-launch-right, 20px);
+      bottom: calc(var(--chat-launch-bottom, 16px) + 62px);
+      width: 380px; max-width: calc(100vw - 40px);
+      height: min(600px, calc(100vh - var(--chat-launch-bottom, 16px) - 62px - 24px));
+      max-height: none;
+      border-radius: 20px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+      transform: translateY(12px) scale(0.97);
+      transform-origin: bottom right;
+      opacity: 0;
+      transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.18s ease;
+      padding-bottom: 0;
+    }
+    .chat-overlay.open .chat-sheet { transform: none; opacity: 1; pointer-events: auto; }
+    .chat-messages { min-height: 0; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .user-marker::after, .bus-marker.tracked::after { animation: none; }
     .chat-sheet, .chat-overlay, .switch, .switch::after { transition: none; }
@@ -805,6 +859,10 @@
   </header>
 
   <div class="weather-capsule">
+    <div class="clock-block">
+      <span class="clock-time" id="clockTime">--:--</span>
+      <span class="clock-date"><span id="clockDate"></span><span class="clock-badge hidden" id="clockBadge">SIM</span></span>
+    </div>
     <div class="weather-row">
       <span class="weather-icon" id="weatherIcon"></span>
       <span class="weather-temp" id="weatherTemp">29°C</span>
@@ -815,6 +873,14 @@
       <div class="dev-row">
         <label for="devTimeInput">Time</label>
         <input type="time" value="14:30" id="devTimeInput">
+      </div>
+      <div class="dev-row">
+        <label for="devSpeedInput">Speed</label>
+        <input type="range" id="devSpeedInput" min="0" max="5" step="1" value="1">
+        <span class="dev-speed-value" id="devSpeedValue">1×</span>
+      </div>
+      <div class="dev-row">
+        <button class="dev-now-btn" id="devNowBtn" type="button">↺ Back to now</button>
       </div>
       <div class="dev-row">
         <label for="devTempInput">Temp °C</label>
@@ -874,7 +940,10 @@
   <!-- Fix #4: BusBoy launch is its own floating button, dynamically kept
        clear of the bottom-stack above via ResizeObserver (see script). -->
   <button class="chat-launch" id="chatLaunchBtn" aria-label="Open BusBoy chat">
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg class="icon-close" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M7 7l10 10M17 7L7 17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <svg class="icon-chat" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.1 0-2.2-.2-3.1-.6L4 21l1.4-4.6C4.5 15 4 13.6 4 12z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
       <circle cx="8.5" cy="12" r="1" fill="white"/>
       <circle cx="12" cy="12" r="1" fill="white"/>
@@ -1082,11 +1151,99 @@
   const devTempInput = document.getElementById('devTempInput');
   const devConditionInput = document.getElementById('devConditionInput');
   const devTimeInput = document.getElementById('devTimeInput');
+  const devSpeedInput = document.getElementById('devSpeedInput');
+  const devSpeedValue = document.getElementById('devSpeedValue');
+
+  /* ---------------------------------------------------------
+     SIMULATION CLOCK — the one "now" the whole app reads.
+     Live mode: nowMs() is just the real clock (so every browser
+     still agrees). Dev Mode: time runs from an anchor at
+     SIM_SPEEDS[slider] x real speed, so buses, time-of-day fleet
+     size, traffic, the clock and BusBoy all fast-forward together.
+     Philippine time (UTC+8, no DST) is used for time of day
+     regardless of the viewer's device timezone.
+     --------------------------------------------------------- */
+  const SIM_SPEEDS = [0, 1, 10, 60, 300, 900];
+  const SIM_SPEED_TITLES = ['Paused', 'Real time', '10 seconds per second', '1 minute per second', '5 minutes per second', '15 minutes per second'];
+  const MANILA_OFFSET_MS = 8 * 3600000;
+  let simAnchorReal = Date.now();
+  let simAnchorSim = Date.now();
+  let simSpeed = 1;
+
+  function isDevOn() { return devSwitch.classList.contains('on'); }
+  function nowMs() {
+    return isDevOn() ? simAnchorSim + (Date.now() - simAnchorReal) * simSpeed : Date.now();
+  }
+  function setSimTime(ms) { simAnchorReal = Date.now(); simAnchorSim = ms; }
+  function setSimSpeed(speed) { setSimTime(nowMs()); simSpeed = speed; }
+  function manilaDate(ms) { return new Date(ms + MANILA_OFFSET_MS); } // read with getUTC*()
+  function manilaHHMM(ms) {
+    const d = manilaDate(ms);
+    return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+  }
+
+  function renderSpeedControl() {
+    const idx = SIM_SPEEDS.indexOf(simSpeed);
+    devSpeedInput.value = idx;
+    devSpeedValue.textContent = simSpeed === 0 ? 'Pause' : simSpeed + '×';
+    devSpeedInput.title = SIM_SPEED_TITLES[idx];
+  }
+
+  const clockTimeEl = document.getElementById('clockTime');
+  const clockDateEl = document.getElementById('clockDate');
+  const clockBadgeEl = document.getElementById('clockBadge');
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function updateClock() {
+    const ms = nowMs();
+    const d = manilaDate(ms);
+    const h = d.getUTCHours();
+    clockTimeEl.textContent = (h % 12 || 12) + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+    clockDateEl.textContent = DAY_NAMES[d.getUTCDay()] + ', ' + MONTH_NAMES[d.getUTCMonth()] + ' ' + d.getUTCDate();
+    const dev = isDevOn();
+    clockBadgeEl.classList.toggle('hidden', !dev);
+    if (dev) {
+      clockBadgeEl.textContent = simSpeed === 0 ? 'PAUSED' : simSpeed === 1 ? 'SIM' : simSpeed + '×';
+      // Keep the Time field showing the running sim time, unless it's being edited.
+      const hhmm = manilaHHMM(ms);
+      if (document.activeElement !== devTimeInput && devTimeInput.value !== hhmm) devTimeInput.value = hhmm;
+    }
+  }
+
+  devTimeInput.addEventListener('input', () => {
+    if (!devTimeInput.value) return;
+    const [h, m] = devTimeInput.value.split(':').map(Number);
+    const cur = nowMs();
+    const manilaMidnight = cur - ((cur + MANILA_OFFSET_MS) % 86400000);
+    setSimTime(manilaMidnight + h * 3600000 + m * 60000);
+    updateClock();
+  });
+  devSpeedInput.addEventListener('input', () => {
+    setSimSpeed(SIM_SPEEDS[Number(devSpeedInput.value)]);
+    renderSpeedControl();
+    updateClock();
+  });
+  document.getElementById('devNowBtn').addEventListener('click', () => {
+    setSimTime(Date.now());
+    simSpeed = 1;
+    renderSpeedControl();
+    updateClock();
+    maybeRegenerateFleet();
+    updateChatSubtitleLive();
+  });
 
   devSwitch.addEventListener('click', () => {
     const isOn = devSwitch.classList.toggle('on');
     modePill.textContent = isOn ? 'DEV' : 'DEMO';
     devControls.classList.toggle('visible', isOn);
+    // Dev clock always starts from the real present at 1x, so turning
+    // Dev Mode on never makes buses jump; turning it off returns to live.
+    setSimTime(Date.now());
+    simSpeed = 1;
+    renderSpeedControl();
+    devTimeInput.value = manilaHHMM(Date.now());
+    updateClock();
     if (isOn) {
       // Seed the override controls with the actual live reading, so "override"
       // starts from reality rather than resetting to an arbitrary default.
@@ -1350,9 +1507,25 @@
     minZoom: 7.5,
     maxZoom: 17,
     maxBounds: CORRIDOR_BOUNDS,
-    attributionControl: { compact: true }
+    attributionControl: false
   });
-  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+
+  // Mobile: zoom/compass + attribution bottom-right (as before).
+  // Desktop: zoom/compass right-middle (CSS centres the top-right corner),
+  // attribution bottom-left, leaving the bottom-right corner for BusBoy.
+  const DESKTOP_QUERY = window.matchMedia('(min-width: 701px)');
+  const navControl = new maplibregl.NavigationControl({ showCompass: true });
+  const attributionControl = new maplibregl.AttributionControl({ compact: true });
+  function placeMapControls() {
+    const desktop = DESKTOP_QUERY.matches;
+    if (map.hasControl(navControl)) map.removeControl(navControl);
+    if (map.hasControl(attributionControl)) map.removeControl(attributionControl);
+    map.addControl(attributionControl, desktop ? 'bottom-left' : 'bottom-right');
+    map.addControl(navControl, desktop ? 'top-right' : 'bottom-right');
+  }
+  placeMapControls();
+  // (updateChatLaunchPosition is defined further down; only call it once the page has run)
+  DESKTOP_QUERY.addEventListener('change', () => { placeMapControls(); updateChatLaunchPosition(); });
 
   let originMarker = null;
   let destinationMarker = null;
@@ -1505,6 +1678,32 @@
       }
     }
     return best.cum;
+  }
+
+  // Nearest point on a polyline: { km, index, point }. `index` is the end
+  // vertex of the closest segment, so line.slice(0, index) + point is the
+  // polyline cut at that spot.
+  function nearestOnPolyline(coord, line) {
+    const kx = 111.32 * Math.cos(coord[1] * Math.PI / 180), ky = 110.57;
+    let best = { km: Infinity, index: 1, point: line[0] };
+    for (let i = 1; i < line.length; i++) {
+      const ax = (line[i - 1][0] - coord[0]) * kx, ay = (line[i - 1][1] - coord[1]) * ky;
+      const bx = (line[i][0] - coord[0]) * kx, by = (line[i][1] - coord[1]) * ky;
+      const dx = bx - ax, dy = by - ay;
+      const lenSq = dx * dx + dy * dy || 1e-12;
+      const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / lenSq));
+      const km = Math.hypot(ax + dx * t, ay + dy * t);
+      if (km < best.km) {
+        best = { km, index: i, point: [line[i - 1][0] + (line[i][0] - line[i - 1][0]) * t, line[i - 1][1] + (line[i][1] - line[i - 1][1]) * t] };
+      }
+    }
+    return best;
+  }
+
+  function polylineKm(line) {
+    let km = 0;
+    for (let i = 1; i < line.length; i++) km += haversineKm(line[i - 1], line[i]);
+    return km;
   }
 
   // Shortest distance (km) from a point to a polyline — used by the
@@ -1766,12 +1965,8 @@
   }
 
   function getEffectiveHour() {
-    if (devSwitch.classList.contains('on')) {
-      const [h, m] = devTimeInput.value.split(':').map(Number);
-      return h + m / 60;
-    }
-    const now = new Date();
-    return now.getHours() + now.getMinutes() / 60;
+    const d = manilaDate(nowMs());
+    return d.getUTCHours() + d.getUTCMinutes() / 60;
   }
 
   function bucketForHour(hour) {
@@ -1803,13 +1998,20 @@
     return { distanceKm: totalRouteKm - ((t - half) / half) * totalRouteKm, direction: -1 };
   }
 
+  // Grows/shrinks the fleet to the current time-of-day size. Bus i is
+  // identical in every bucket (all attributes derive from i), so buses
+  // 0..count-1 are simply kept — a tracked or ridden bus survives peak ->
+  // midday -> night transitions unless it's one of the buses taken off.
   function createFleet() {
-    fleet.forEach(b => b.marker.remove());
-    fleet = [];
     const bucket = bucketForHour(getEffectiveHour());
     const count = busCounts[bucket];
 
-    for (let i = 0; i < count; i++) {
+    const removed = fleet.filter(b => b.id >= count);
+    if (removed.some(b => b.id === trackedBusId)) stopTracking();
+    removed.forEach(b => b.marker.remove());
+    fleet = fleet.filter(b => b.id < count);
+
+    for (let i = fleet.length; i < count; i++) {
       const speedRand = mulberry32(i * 104729 + 17);
       const baseSpeed = 38 + speedRand() * 12; // deterministic, 38-50 km/h
 
@@ -1824,21 +2026,22 @@
       marker.setPopup(popup);
       fleet.push({ id: i, plate, baseSpeed, phaseFraction, direction: 1, distanceKm: 0, marker, popup });
     }
+    if (currentBucket !== null && currentBucket !== bucket) updateChatSubtitleLive();
     currentBucket = bucket;
-    // A regenerated fleet invalidates any bus that was being tracked/guided.
-    trackedBusId = null;
-    clearGuideRoute();
-    busSheetOverlay.classList.remove('open');
     positionFleet(); // place immediately rather than waiting for the next tick
   }
 
   function positionFleet() {
-    const now = Date.now();
+    const now = nowMs();
     fleet.forEach(bus => {
       const { distanceKm, direction } = getBusPosition(bus, now);
       bus.distanceKm = distanceKm;
       bus.direction = direction;
       bus.marker.setLngLat(pointAtDistance(distanceKm));
+      // Popup content only depends on direction; rebuilding it on every
+      // tick is wasted work at fast-forward tick rates.
+      if (bus.popupDirection === direction) return;
+      bus.popupDirection = direction;
       bus.popup.setHTML(
         '<strong>' + bus.plate + '</strong><span>' + (direction === 1 ? 'Northbound' : 'Southbound') + '</span>' +
         '<div class="popup-actions">' +
@@ -1895,12 +2098,24 @@
     if (fleet.length === 0) return;
     maybeRegenerateFleet();
     positionFleet();
+    // Keep the tracked bus's overlays glued to it: the rider pin + blue
+    // line while riding, or the dashed walk-to-bus line while guiding.
+    const trackedBus = trackedBusId !== null ? fleet.find(b => b.id === trackedBusId) : null;
+    if (trackedBus && isRidingBus) updateRide(trackedBus);
+    else if (trackedBus && guideRouteActive) updateGuideLine(trackedBus);
     const multiplier = getSpeedMultiplier();
     updateNearestBusETA(multiplier);
     if (trackedBusId !== null) updateBusSheetLive(multiplier);
   }
 
-  setInterval(tick, 1000);
+  // 1 update/second normally; 5/second while fast-forwarding so buses
+  // glide instead of jumping (at 900x a 1 s tick would be a 15 min jump).
+  function runLoop() {
+    updateClock();
+    tick();
+    setTimeout(runLoop, (isDevOn() && simSpeed > 1) ? 200 : 1000);
+  }
+  runLoop();
   devTimeInput.addEventListener('input', maybeRegenerateFleet);
 
   function updateNearestBusETA(multiplier) {
@@ -2013,6 +2228,20 @@
     busSheetDirection.textContent = (bus.direction === 1 ? 'Northbound' : 'Southbound');
     etaLabel.textContent = 'Tracking · ' + bus.plate;
     etaPlateEl.textContent = 'Plate ' + bus.plate;
+    if (isRidingBus) {
+      const destKm = destinationCoord ? distanceAlongRouteForCoord(destinationCoord) : (bus.direction === 1 ? totalRouteKm : 0);
+      const destName = destinationCoord ? destinationInput.value : (bus.direction === 1 ? 'Sta. Cruz' : 'Caloocan');
+      const aheadKm = (destKm - bus.distanceKm) * bus.direction;
+      let text;
+      if (aheadKm < -0.2) text = 'Past your stop';
+      else if (aheadKm < 0.2) text = 'Arriving now';
+      else text = Math.max(1, Math.round((aheadKm / Math.max(bus.baseSpeed * multiplier, 5)) * 60)) + ' min to go';
+      etaLabel.textContent = 'Riding · ' + bus.plate;
+      busSheetEtaLabel.textContent = 'Riding to ' + destName;
+      busSheetEtaValue.textContent = text;
+      etaValueEl.textContent = text;
+      return;
+    }
     if (!originCoord) {
       busSheetEtaValue.textContent = 'Set your location for an ETA';
       etaValueEl.textContent = 'Tracking';
@@ -2099,7 +2328,9 @@
 
   function drawMyTripLine() {
     const bus = fleet.find(b => b.id === trackedBusId);
-    const originDist = originCoord ? distanceAlongRouteForCoord(originCoord) : (bus ? bus.distanceKm : 0);
+    // While riding, "my trip" is what's left of it: from the bus onward.
+    const originDist = (isRidingBus && bus) ? bus.distanceKm
+      : originCoord ? distanceAlongRouteForCoord(originCoord) : (bus ? bus.distanceKm : 0);
     const destDist = destinationCoord
       ? distanceAlongRouteForCoord(destinationCoord)
       : (bus && bus.direction === 1 ? totalRouteKm : 0);
@@ -2118,7 +2349,20 @@
     }
   }
 
+  // Rider pin sits on the bus's top-right edge so both pins stay visible
+  // but read as one unit ("I'm on this bus").
+  const RIDING_PIN_OFFSET = [15, -15];
+
+  function updateRide(bus) {
+    const busPt = pointAtDistance(bus.distanceKm);
+    originCoord = busPt;
+    if (originMarker) originMarker.setLngLat(busPt).setOffset(RIDING_PIN_OFFSET);
+    drawMyTripLine();
+  }
+
   function toggleRiding() {
+    const bus = fleet.find(b => b.id === trackedBusId);
+    if (!isRidingBus && !bus) return; // can only board a tracked bus
     isRidingBus = !isRidingBus;
     busSheetRideToggle.classList.toggle('active', isRidingBus);
 
@@ -2127,7 +2371,19 @@
         map.setPaintProperty('zambales-route-line', 'line-color', '#FF6961');
         map.setPaintProperty('zambales-route-line', 'line-opacity', 0.4);
       }
-      drawMyTripLine();
+      // Already on board: walking directions to the bus no longer apply.
+      clearGuideRoute();
+      busSheetGuideInfo.classList.add('hidden');
+      collapseDirections();
+      busSheetGetDirectionsBtn.classList.add('hidden');
+
+      const busPt = pointAtDistance(bus.distanceKm);
+      if (!originMarker) {
+        originMarker = new maplibregl.Marker({ element: makeUserEl() }).setLngLat(busPt).addTo(map);
+        etaCard.classList.remove('hidden');
+      }
+      locationInput.value = 'On bus ' + bus.plate;
+      updateRide(bus);
     } else {
       if (map.getLayer('zambales-route-line')) {
         map.setPaintProperty('zambales-route-line', 'line-color', '#FF6961');
@@ -2135,6 +2391,11 @@
       }
       if (map.getLayer('my-trip-route-line')) map.removeLayer('my-trip-route-line');
       if (map.getSource('my-trip-route')) map.removeSource('my-trip-route');
+      // Getting off leaves you where the bus is now.
+      if (originMarker) originMarker.setOffset([0, 0]);
+      if (originCoord) locationInput.value = 'Current Location (simulated)';
+      busSheetEtaLabel.textContent = 'Estimated arrival';
+      busSheetGetDirectionsBtn.classList.remove('hidden');
     }
   }
 
@@ -2164,22 +2425,85 @@
     });
   });
 
+  /* The dashed line follows the bus between OSRM fetches:
+       * bus driving along the drawn path toward you -> cut the path at the bus;
+       * bus driving away -> extend the path along the bus route to the bus.
+     It re-asks OSRM once the bus has moved GUIDE_REFETCH_KM (at most every
+     GUIDE_REFETCH_MIN_MS), so the public OSRM server gets ~1 request/min. */
+  const GUIDE_REFETCH_KM = 0.75;
+  const GUIDE_REFETCH_MIN_MS = 20000;
+  let guideState = null;        // { coords, fetchKm, busId, fetchedAt }
+  let guideRequestSeq = 0;      // ignores responses that arrive out of order
+  let guideRefreshInFlight = false;
+
   function clearGuideRoute() {
     guideRouteActive = false;
+    guideState = null;
+    guideRequestSeq++;
     if (map.getLayer('guide-route-line')) map.removeLayer('guide-route-line');
     if (map.getSource('guide-route')) map.removeSource('guide-route');
   }
 
-  async function guideToBus(bus) {
+  function liveGuideCoords(bus) {
+    const path = guideState.coords;
+    const busPt = pointAtDistance(bus.distanceKm);
+    const near = nearestOnPolyline(busPt, path);
+    if (near.km <= 0.08) return path.slice(0, near.index).concat([near.point, busPt]);
+    const a = guideState.fetchKm, b = bus.distanceKm;
+    let tail = sliceRouteCoords(Math.min(a, b), Math.max(a, b));
+    if (b < a) tail = tail.reverse();
+    return path.concat(tail.slice(1), [busPt]);
+  }
+
+  function drawGuideLine(coords) {
+    const data = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
+    if (map.getSource('guide-route')) {
+      map.getSource('guide-route').setData(data);
+    } else {
+      map.addSource('guide-route', { type: 'geojson', data });
+      map.addLayer({
+        id: 'guide-route-line', type: 'line', source: 'guide-route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#8E8E93', 'line-width': 4, 'line-dasharray': [1, 1.6] }
+      });
+    }
+  }
+
+  function showGuideInfo(coords) {
+    const km = polylineKm(coords);
+    const mins = Math.max(1, Math.round((km / ASSUMED_SPEED_KMH[selectedGuideMode]) * 60));
+    busSheetGuideInfo.textContent = 'About ' + km.toFixed(1) + ' km, ~' + mins + ' min ' + MODE_LABEL[selectedGuideMode] + ' to reach this bus.';
+  }
+
+  function updateGuideLine(bus) {
+    if (!guideState || guideState.busId !== bus.id || !originCoord) return;
+    const coords = liveGuideCoords(bus);
+    drawGuideLine(coords);
+    showGuideInfo(coords);
+    const drifted = Math.abs(bus.distanceKm - guideState.fetchKm) > GUIDE_REFETCH_KM;
+    if (drifted && !guideRefreshInFlight && Date.now() - guideState.fetchedAt > GUIDE_REFETCH_MIN_MS) {
+      guideRefreshInFlight = true;
+      guideState.fetchedAt = Date.now(); // throttle even if this attempt fails
+      guideToBus(bus, { silent: true }).finally(() => { guideRefreshInFlight = false; });
+    }
+  }
+
+  async function guideToBus(bus, opts) {
+    const silent = !!(opts && opts.silent); // background refresh: no text flicker, no camera move
     if (!originCoord) {
       busSheetGuideInfo.textContent = 'Set your location first so I can guide you there.';
       busSheetGuideInfo.classList.remove('hidden');
       return;
     }
-    busSheetGuideInfo.textContent = 'Finding the way…';
-    busSheetGuideInfo.classList.remove('hidden');
+    if (!silent) {
+      busSheetGuideInfo.textContent = 'Finding the way…';
+      busSheetGuideInfo.classList.remove('hidden');
+    }
 
-    const busCoord = bus.marker.getLngLat();
+    const seq = ++guideRequestSeq;
+    const fetchKm = bus.distanceKm;
+    const busPt = pointAtDistance(fetchKm);
+    const busCoord = { lng: busPt[0], lat: busPt[1] };
     const coordStr = originCoord[0] + ',' + originCoord[1] + ';' + busCoord.lng + ',' + busCoord.lat;
     const profile = MODE_OSRM_PROFILE[selectedGuideMode];
 
@@ -2203,26 +2527,22 @@
         else throw err;
       }
 
-      clearGuideRoute();
-      map.addSource('guide-route', { type: 'geojson', data: { type: 'Feature', geometry: route.geometry } });
-      map.addLayer({
-        id: 'guide-route-line', type: 'line', source: 'guide-route',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#8E8E93', 'line-width': 4, 'line-dasharray': [1, 1.6] }
-      });
+      // Stale if a newer request started, tracking changed, or the user boarded.
+      if (seq !== guideRequestSeq || trackedBusId !== bus.id || isRidingBus) return;
+      guideState = { coords: route.geometry.coordinates, fetchKm, busId: bus.id, fetchedAt: Date.now() };
       guideRouteActive = true;
+      const coords = liveGuideCoords(bus);
+      drawGuideLine(coords);
+      showGuideInfo(coords);
 
-      const km = route.distance / 1000;
-      const speed = ASSUMED_SPEED_KMH[selectedGuideMode];
-      const mins = Math.max(1, Math.round((km / speed) * 60));
-      busSheetGuideInfo.textContent = 'About ' + km.toFixed(1) + ' km, ~' + mins + ' min ' + MODE_LABEL[selectedGuideMode] + ' to reach this bus.';
-
-      const bounds = new maplibregl.LngLatBounds(originCoord, originCoord);
-      bounds.extend([busCoord.lng, busCoord.lat]);
-      map.fitBounds(bounds, { padding: 80, maxZoom: 14 });
+      if (!silent) {
+        const bounds = new maplibregl.LngLatBounds(originCoord, originCoord);
+        bounds.extend([busCoord.lng, busCoord.lat]);
+        map.fitBounds(bounds, { padding: 80, maxZoom: 14 });
+      }
     } catch (err) {
       console.warn('Guide routing failed.', err);
-      busSheetGuideInfo.textContent = "Couldn't find real-road directions right now — try again in a moment.";
+      if (!silent) busSheetGuideInfo.textContent = "Couldn't find real-road directions right now — try again in a moment.";
     }
   }
 
@@ -2278,7 +2598,7 @@
     // "Recommended" prefers a bus that isn't currently in a simulated
     // incident slowdown, even if its raw ETA number is marginally worse —
     // otherwise "recommended" would just be a duplicate of "fastest".
-    const now = Date.now();
+    const now = nowMs();
     const nonIncident = candidates.filter(c => !isBusInIncident(c.bus.id, now));
     const recommendedPool = nonIncident.length > 0 ? nonIncident : candidates;
     const recommended = [...recommendedPool].sort((a, b) => a.etaMinutes - b.etaMinutes)[0];
@@ -2352,26 +2672,35 @@
 
   function updateChatLaunchPosition() {
     const navControl = document.querySelector('.maplibregl-ctrl-bottom-right');
+    if (navControl) navControl.style.marginBottom = '';
 
     // Fix #7: while pinning, anchor to the pin-mode action row instead of
     // the (hidden) bottom-stack, so the chat button follows it down rather
     // than leaving a big static gap.
+    const isDesktop = DESKTOP_QUERY.matches;
+    const DESKTOP_CHAT_RIGHT = 20;
+
     if (bottomStack.style.display === 'none') {
       const pinRect = pinModeActions.getBoundingClientRect();
-      const gap = 14;
-      chatLaunchBtn.style.right = '';
-      chatLaunchBtn.style.bottom = Math.max(16, window.innerHeight - pinRect.top + gap) + 'px';
+      if (isDesktop) {
+        // stay in the corner, level with the pin-mode buttons
+        chatLaunchBtn.style.right = DESKTOP_CHAT_RIGHT + 'px';
+        chatLaunchBtn.style.bottom = Math.max(16, window.innerHeight - (pinRect.top + pinRect.height / 2) - 25) + 'px';
+      } else {
+        chatLaunchBtn.style.right = '';
+        chatLaunchBtn.style.bottom = Math.max(16, window.innerHeight - pinRect.top + 14) + 'px';
+      }
+      syncChatPopoverAnchor();
       return;
     }
 
-    const isDesktop = window.innerWidth > DESKTOP_BREAKPOINT;
-
     if (isDesktop) {
+      // bottom-right corner, vertically centred on the Find My Bus button
       const findBtnRect = findBusBtn.getBoundingClientRect();
       const centerY = findBtnRect.top + findBtnRect.height / 2;
-      chatLaunchBtn.style.bottom = (window.innerHeight - centerY - 25) + 'px';
-      chatLaunchBtn.style.right = '96px'; // clears the zoom/compass control column
-      if (navControl) navControl.style.marginBottom = '16px'; // default, no longer needs pushing up
+      chatLaunchBtn.style.bottom = Math.max(16, window.innerHeight - centerY - 25) + 'px';
+      chatLaunchBtn.style.right = DESKTOP_CHAT_RIGHT + 'px';
+      if (navControl) navControl.style.marginBottom = '';
     } else {
       const rect = bottomStack.getBoundingClientRect();
       const gap = 14;
@@ -2380,6 +2709,14 @@
       chatLaunchBtn.style.right = ''; // fall back to CSS default
       if (navControl) navControl.style.marginBottom = (bottomOffset + 50 + 10) + 'px'; // clear the chat button too
     }
+    syncChatPopoverAnchor();
+  }
+
+  // Desktop chat popover opens directly above the launch button.
+  function syncChatPopoverAnchor() {
+    const r = chatLaunchBtn.getBoundingClientRect();
+    document.documentElement.style.setProperty('--chat-launch-bottom', Math.round(window.innerHeight - r.bottom) + 'px');
+    document.documentElement.style.setProperty('--chat-launch-right', Math.round(window.innerWidth - r.right) + 'px');
   }
   const pinModeActions = document.getElementById('pinModeOverlay').querySelector('.pin-mode-actions');
   new ResizeObserver(updateChatLaunchPosition).observe(bottomStack);
@@ -2490,6 +2827,7 @@
 
   document.getElementById('denyLocation').addEventListener('click', () => {
     permissionOverlay.classList.add('hidden');
+    enterPinMode('origin'); // go straight to placing your pin
   });
 
   /* =========================================================
@@ -2674,8 +3012,19 @@
     return el;
   }
 
+  function closeChat() {
+    chatOverlay.classList.remove('open');
+    document.body.classList.remove('chat-open');
+    chatLaunchBtn.classList.remove('is-open');
+    chatLaunchBtn.setAttribute('aria-label', 'Open BusBoy chat');
+  }
+
   function openChat() {
+    syncChatPopoverAnchor();
     chatOverlay.classList.add('open');
+    document.body.classList.add('chat-open');
+    chatLaunchBtn.classList.add('is-open');
+    chatLaunchBtn.setAttribute('aria-label', 'Close BusBoy chat');
     chatInput.focus();
     chatHeaderSub.textContent = getGreeting().sub;
     if (!chatOpened) {
@@ -2685,8 +3034,14 @@
     }
   }
 
-  document.getElementById('chatLaunchBtn').addEventListener('click', openChat);
-  document.getElementById('chatClose').addEventListener('click', () => chatOverlay.classList.remove('open'));
+  // On desktop the launch button stays visible under the popover, so it toggles.
+  document.getElementById('chatLaunchBtn').addEventListener('click', () => {
+    if (chatOverlay.classList.contains('open')) closeChat(); else openChat();
+  });
+  document.getElementById('chatClose').addEventListener('click', closeChat);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && chatOverlay.classList.contains('open')) closeChat();
+  });
 
   /* ---------------------------------------------------------
      CACHED FAQ ANSWERS — shared by quick-reply chips AND typed
