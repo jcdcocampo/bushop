@@ -65,15 +65,15 @@
     margin-bottom: 90px;
   }
 
-  .maplibregl-popup-content {
+  body .maplibregl-popup-content { /* body: MapLibre's stylesheet loads after this one */
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     border-radius: 12px;
     box-shadow: var(--shadow-float);
     padding: 10px 12px;
   }
 
-  .maplibregl-popup-content strong { display: block; font-size: 13px; color: var(--text-primary); }
-  .maplibregl-popup-content span { font-size: 11px; color: var(--text-secondary); }
+  body .maplibregl-popup-content strong { display: block; font-size: 13px; color: var(--text-primary); }
+  body .maplibregl-popup-content span { font-size: 11px; color: var(--text-secondary); }
   .popup-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .popup-track-btn, .popup-guide-btn {
     border: none; border-radius: 10px; padding: 7px 10px;
@@ -319,9 +319,16 @@
   .board-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
   .board-btn:active { background: #EEF4FF; }
   @media (max-width: 360px) { .board-btn span { display: none; } }
-  .recenter-ctrl button svg { width: 18px; height: 18px; display: block; margin: auto; color: #333; }
-  .recenter-ctrl button.hidden { display: none; }
-  .recenter-ctrl #recenterBus svg { color: var(--accent); }
+  .recenter-bar { display: flex; gap: 8px; align-self: flex-start; margin-bottom: -2px; }
+  .recenter-btn {
+    display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 13px 0 10px;
+    border: none; border-radius: var(--radius-pill); background: var(--surface-translucent);
+    backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    box-shadow: var(--shadow-float); color: var(--text-primary); font: 600 13px/1 inherit; font-family: inherit; cursor: pointer;
+  }
+  .recenter-btn svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--accent); }
+  .recenter-btn:active { transform: scale(0.96); }
+  .recenter-btn.hidden { display: none; }
   .sheet-btn-row { display: flex; gap: 8px; margin: -2px 0 12px; }
   .board-modes { display: flex; gap: 6px; margin: 2px 0 8px; }
   .board-modes .mode-btn { padding: 8px 4px; }
@@ -1062,10 +1069,10 @@
      support-style popover above its button instead of a bottom sheet.
      No backdrop, so the map stays usable while chatting. */
   @media (min-width: 701px) {
-    .maplibregl-ctrl-top-right { top: 50%; transform: translateY(-50%); }
-    .maplibregl-ctrl-top-right .maplibregl-ctrl { margin-top: 0; }
-    .maplibregl-ctrl-top-right .maplibregl-ctrl-attrib { margin-top: 8px; }
-    .maplibregl-ctrl-top-right { transition: opacity 0.18s ease; }
+    body .maplibregl-ctrl-top-right { top: 50%; transform: translateY(-50%); } /* body: must outrank MapLibre's CSS, which loads later */
+    body .maplibregl-ctrl-top-right .maplibregl-ctrl { margin-top: 0; }
+    body .maplibregl-ctrl-top-right .maplibregl-ctrl-attrib { margin-top: 8px; }
+    body .maplibregl-ctrl-top-right { transition: opacity 0.18s ease; }
     body.chat-open .maplibregl-ctrl-top-right { opacity: 0; pointer-events: none; } /* popover covers that edge */
 
     .chat-overlay { background: transparent; pointer-events: none !important; }
@@ -1157,6 +1164,17 @@
        relying on hand-guessed pixel offsets that broke when content
        grew (that was the cause of the overlap you saw). -->
   <div class="bottom-stack" id="bottomStack">
+    <!-- Recenter buttons sit on top of the cards (left side, clear of the BusBoy button) -->
+    <div class="recenter-bar" id="recenterBar">
+      <button type="button" class="recenter-btn" id="recenterMe" title="Recenter on my location" aria-label="Recenter on my location">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>My location</span>
+      </button>
+      <button type="button" class="recenter-btn hidden" id="recenterBus" title="Recenter on the bus I’m tracking" aria-label="Recenter on the bus I’m tracking">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="4" width="14" height="13" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M5 11h14" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor"/><circle cx="15.5" cy="14" r="1.1" fill="currentColor"/><path d="M8 17v2.5M16 17v2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>Tracked bus</span>
+      </button>
+    </div>
     <div class="eta-card hidden" id="etaCard">
       <div class="eta-info">
         <span class="eta-label" id="etaLabel">Nearest bus · Olongapo-bound</span>
@@ -1633,6 +1651,19 @@
     { name: 'Alaminos City Terminal', note: 'Pangasinan Line terminal, Marcos Ave. (approx.)', coord: [119.98500, 16.14500] },
     { name: 'Bolinao Booking Office', note: 'Pangasinan Line booking office (approx.)', coord: [119.89500, 16.38700] },
     { name: 'Bolinao', note: 'Pangasinan town · end of the Pangasinan Line', coord: [119.89500, 16.38700] },
+    { name: 'Valenzuela', note: 'Town · Metro Manila (MacArthur Hwy; buses use NLEX nearby)', coord: [120.98208, 14.67050] },
+    { name: 'Meycauayan', note: 'Town · Bulacan (MacArthur Hwy; buses use NLEX nearby)', coord: [120.96136, 14.73026] },
+    { name: 'Marilao', note: 'Town · Bulacan (MacArthur Hwy; buses use NLEX nearby)', coord: [120.94997, 14.76050] },
+    { name: 'Bocaue', note: 'Town · Bulacan (MacArthur Hwy; buses use NLEX nearby)', coord: [120.93211, 14.79020] },
+    { name: 'Balagtas', note: 'Town · Bulacan (MacArthur Hwy; buses use NLEX nearby)', coord: [120.90797, 14.81712] },
+    { name: 'Guiguinto', note: 'Town · Bulacan (MacArthur Hwy; buses use NLEX nearby)', coord: [120.89670, 14.82610] },
+    { name: 'Malolos', note: 'Town · Bulacan (MacArthur Hwy; buses use NLEX nearby)', coord: [120.85974, 14.83912] },
+    { name: 'Calumpit', note: 'Town · Bulacan (MacArthur Hwy; buses use NLEX nearby)', coord: [120.77216, 14.90104] },
+    { name: 'Apalit', note: 'Town · Pampanga (MacArthur Hwy; buses use NLEX nearby)', coord: [120.76008, 14.93377] },
+    { name: 'San Simon', note: 'Town · Pampanga (MacArthur Hwy; buses use NLEX nearby)', coord: [120.75182, 14.98328] },
+    { name: 'Minalin', note: 'Town · Pampanga (MacArthur Hwy; buses use NLEX nearby)', coord: [120.73904, 14.99529] },
+    { name: 'Sto. Tomas', note: 'Town · Pampanga (MacArthur Hwy; buses use NLEX nearby)', coord: [120.73025, 14.99940] },
+    { name: 'Angeles', note: 'City · Pampanga (buses use NLEX Angeles exit)', coord: [120.59209, 15.15353] },
     { name: 'Baguio City', note: 'City · end of the Baguio Line', coord: [120.60050, 16.40900] },
     { name: 'Aparri', note: 'Cagayan town · end of the Cagayan Valley Line', coord: [121.63900, 18.35700] },
     { name: 'Tabuk', note: 'Kalinga city · end of the Roxas–Tabuk service', coord: [121.44000, 17.41000] },
@@ -1736,7 +1767,7 @@
     { name: 'Aparri Booking Office', note: 'Aparri, Cagayan · Cagayan Valley Line terminus (approx.)', coord: [121.63900, 18.35700], type: 'booking' },
     { name: 'Urdaneta Terminal', note: 'MacArthur Hwy., Urdaneta City (approx.)', coord: [120.57077, 15.97628], type: 'terminal' },
     { name: 'Lubao Bus Stopover', note: 'Lubao, Pampanga (approx.)', coord: [120.59110, 14.93523], type: 'stopover' },
-    { name: 'Dau Bus Stopover', note: 'Mabalacat, Pampanga (approx.)', coord: [120.58818, 15.17373], type: 'stopover' },
+    { name: 'Dau Terminal', note: 'Mabalacat City Bus Terminal Complex, Dau (approx.) · Express buses stop here before SCTEX', coord: [120.58818, 15.17373], type: 'terminal' },
     { name: 'Motorway Bus Stopover', note: 'Tarlac City (approx.)', coord: [120.59757, 15.44617], type: 'stopover' },
     { name: 'Pura Bus Stopover', note: 'Pura, Tarlac (approx.)', coord: [120.64850, 15.62450], type: 'stopover' },
     { name: 'Sison Bus Stopover', note: 'Sison, Pangasinan (approx.)', coord: [120.51134, 16.20769], type: 'stopover' },
@@ -2168,11 +2199,51 @@
     [121.45500, 17.73800]  // Tuao Booking Office (approx.)
   ];
 
-  const METRO_N = METRO_ANCHORS.length; // anchors before Caloocan (Pasay → Balintawak on EDSA)
-  const ZAMBALES_ANCHORS = METRO_ANCHORS.concat(ZAMBALES_BASE);
-  const PANGASINAN_ANCHORS = METRO_ANCHORS.concat(PANGASINAN_BASE);
-  const BAGUIO_ANCHORS = METRO_ANCHORS.concat(PANGASINAN_BASE.slice(0, 55), BAGUIO_EXT);
-  const CAGAYAN_TRUNK = METRO_ANCHORS.concat(PANGASINAN_BASE.slice(0, 48), CAGAYAN_LINK, CAGAYAN_MAIN);
+  /* NLEX (E1) — every line leaves Metro Manila on NLEX from the Balintawak Interchange.
+     Verified points: Balintawak Cloverleaf (DPWH), Candaba Viaduct (Wikipedia: 14.9542°N 120.7767°E),
+     then where buses leave the expressway: Del Pilar Br by the San Fernando terminal (Zambales, via the
+     San Fernando exit and JASA) or Dau Br on MacArthur at the Dau exit (the northern lines). Between them
+     the road snapping traces NLEX itself; leg lengths use NLEX kilometer posts (Wikipedia), not straight lines.
+     Metro Manila origins, all entering NLEX at Balintawak: Pasay (EDSA via Cubao and Kamias), Caloocan
+     (Monumento via EDSA) and Sampaloc (España via A. Bonifacio Avenue). */
+  const BALINTAWAK = METRO_ANCHORS[METRO_ANCHORS.length - 1];
+  const CANDABA_VIADUCT = [120.77670, 14.95420];
+  const CALOOCAN_FEEDER = [[120.98360, 14.65550], BALINTAWAK];  // Caloocan Terminal (Rizal Ave. Ext.) → EDSA → Balintawak
+  const SAMPALOC_FEEDER = [[120.99350, 14.60900], BALINTAWAK];  // Sampaloc Terminal (España, approx.) → A. Bonifacio Ave. → Balintawak
+  const ZAMBALES_TAIL = ZAMBALES_BASE.slice(27);                 // Del Pilar Br (San Fernando) → JASA → Olongapo → Sta. Cruz
+  const NORTH_TAIL = PANGASINAN_BASE.slice(32);                  // Dau Br (Mabalacat) → MacArthur north
+  const CAGAYAN_TRUNK = NORTH_TAIL.slice(0, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN);
+  const DAU_BR = PANGASINAN_BASE[32]; // MacArthur Hwy at the NLEX Dau exit, by the Victory Liner Dau terminal
+  /* EXPRESS routes after Dau (verified): Baguio via SCTEX–TPLEX to the Urdaneta exit ("Cubao–Baguio via
+     NLEX/Dau/SCTEX/TPLEX/Urdaneta Exit" route board); Dagupan via TPLEX Gerona exit ("Dagupan via TPLEX Gerona
+     Exit"); Olongapo via SCTEX and Subic Bay ("Cubao–Olongapo via Dau/SCTEX/SBMA"). Cagayan Valley Express route
+     isn't verified, so it leaves NLEX at Dau and continues on MacArthur. SCTEX/TPLEX leg lengths are estimates
+     (straight line × 1.15); the browser traces the expressway itself. */
+  // Inner Cities services: EDSA to the Caloocan terminal, then MacArthur Highway through the Bulacan and Pampanga towns.
+  const METRO_N = METRO_ANCHORS.length;
+  const IC_ZAMBALES_ANCHORS = METRO_ANCHORS.concat(ZAMBALES_BASE);
+  const IC_PANGASINAN_ANCHORS = METRO_ANCHORS.concat(PANGASINAN_BASE);
+  const IC_BAGUIO_ANCHORS = METRO_ANCHORS.concat(PANGASINAN_BASE.slice(0, 55), BAGUIO_EXT);
+  const IC_CAGAYAN_TRUNK = METRO_ANCHORS.concat(PANGASINAN_BASE.slice(0, 48), CAGAYAN_LINK, CAGAYAN_MAIN);
+  // E1 boarding rule: once a bus is on NLEX, the only stop is Tabang (Guiguinto) until it leaves the expressway.
+  const TABANG_POST = 32.89; // NLEX Tabang exit, km post
+  const NLEX_BAL_POST = 9.56, NLEX_CAND_POST = 49.56;           // km posts (Rizal Park = km 0)
+  // NLEX exits (Wikipedia km posts) — used only to say where a bus is on NLEX, never as stops.
+  const NLEX_EXITS = [
+    { post: 9.56, name: 'Balintawak', town: 'Quezon City', province: 'Metro Manila' },
+    { post: 15.39, name: 'Paso de Blas exit', town: 'Valenzuela', province: 'Metro Manila' },
+    { post: 20.13, name: 'Meycauayan exit', town: 'Meycauayan', province: 'Bulacan' },
+    { post: 23.32, name: 'Marilao exit', town: 'Marilao', province: 'Bulacan' },
+    { post: 27.75, name: 'Bocaue exit', town: 'Bocaue', province: 'Bulacan' },
+    { post: 32.89, name: 'Tabang exit', town: 'Guiguinto', province: 'Bulacan' },
+    { post: 38.51, name: 'Santa Rita exit', town: 'Guiguinto', province: 'Bulacan' },
+    { post: 45.00, name: 'Pulilan exit', town: 'Pulilan', province: 'Bulacan' },
+    { post: 56.97, name: 'San Simon exit', town: 'San Simon', province: 'Pampanga' },
+    { post: 65.83, name: 'San Fernando exit', town: 'San Fernando', province: 'Pampanga' },
+    { post: 72.00, name: 'Mexico exit', town: 'Mexico', province: 'Pampanga' },
+    { post: 81.34, name: 'Angeles exit', town: 'Angeles', province: 'Pampanga' },
+    { post: 83.35, name: 'Dau exit', town: 'Mabalacat', province: 'Pampanga' }
+  ];
   const OLONGAPO_TERMINAL_COORD = [120.2857, 14.8366];
   const CORRIDOR_BOUNDS = [[119.20, 14.00], [122.80, 18.90]];
 
@@ -2194,24 +2265,8 @@
   const DESKTOP_QUERY = window.matchMedia('(min-width: 701px)');
   const navControl = new maplibregl.NavigationControl({ showCompass: true });
   const attributionControl = new maplibregl.AttributionControl({ compact: true });
-  // Recenter: on my location, and on the bus being tracked (shown only while tracking).
-  // Sits with the zoom/compass buttons so all camera controls are in one place.
-  const recenterControl = {
-    onAdd() {
-      const box = document.createElement('div');
-      box.className = 'maplibregl-ctrl maplibregl-ctrl-group recenter-ctrl';
-      box.innerHTML =
-        '<button type="button" id="recenterMe" title="Recenter on my location" aria-label="Recenter on my location">' +
-          '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>' +
-        '<button type="button" id="recenterBus" class="hidden" title="Recenter on the bus I\u2019m tracking" aria-label="Recenter on the bus I\u2019m tracking">' +
-          '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="4" width="14" height="13" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M5 11h14" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor"/><circle cx="15.5" cy="14" r="1.1" fill="currentColor"/><path d="M8 17v2.5M16 17v2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>';
-      box.querySelector('#recenterMe').addEventListener('click', recenterOnMe);
-      box.querySelector('#recenterBus').addEventListener('click', recenterOnBus);
-      this._box = box;
-      return box;
-    },
-    onRemove() { this._box.remove(); }
-  };
+  document.getElementById('recenterMe').addEventListener('click', () => recenterOnMe());
+  document.getElementById('recenterBus').addEventListener('click', () => recenterOnBus());
   function recenterOnMe() {
     if (!originCoord) { showModeToast('Set your location first'); return; }
     map.easeTo({ center: originCoord, zoom: Math.max(map.getZoom(), 14), duration: 700 });
@@ -2224,22 +2279,17 @@
   function placeMapControls() {
     const desktop = DESKTOP_QUERY.matches;
     if (map.hasControl(navControl)) map.removeControl(navControl);
-    if (map.hasControl(recenterControl)) map.removeControl(recenterControl);
     if (map.hasControl(attributionControl)) map.removeControl(attributionControl);
     if (desktop) {
       // stacked in the right-middle column: zoom/tilt, recenter, then the map credits
       map.addControl(navControl, 'top-right');
-      map.addControl(recenterControl, 'top-right');
       map.addControl(attributionControl, 'top-right');
       keepAttributionCollapsed();
     } else {
       map.addControl(attributionControl, 'bottom-right');
       map.addControl(navControl, 'bottom-right');
-      map.addControl(recenterControl, 'bottom-right');
     }
-    // re-show the tracked-bus button if controls were re-placed mid-tracking (deferred: this also runs at startup,
-    // before trackedBusId exists)
-    setTimeout(() => { try { syncTrackingUI(); } catch (e) { /* not ready yet */ } }, 0);
+
   }
   // MapLibre auto-expands compact credits into a full text banner once the
   // style's attribution text arrives (after load). On desktop, where they sit
@@ -2368,37 +2418,167 @@
      Olongapo ~7 h. Peak = all 900 on the road; midday 70%; night 30%. Not official Victory Liner figures.
        Zambales 180 · Pangasinan 170 · Baguio 200 (busiest) · Cagayan Valley 350 (Aparri 200, Roxas–Tabuk 90, Tuao 60) */
   const FLEET_SHARE = { peak: 1, midday: 0.7, night: 0.3 };
+  /* FLEET: 900 buses. Each line runs Express (NLEX/E1) and Inner Cities (MacArthur Highway through the towns)
+     services — 60% Express, 40% Inner Cities (an assumption, not official figures). Express buses come from
+     Pasay (half), Caloocan and Sampaloc (a quarter each); Inner Cities from Pasay via the Caloocan terminal. */
   const ROUTE_DEFS = [
-    { id: 'zambales', line: 'zambales', anchors: ZAMBALES_ANCHORS, ends: ['Pasay', 'Sta. Cruz'], outbound: 'toward Olongapo / Iba / Sta. Cruz',
-      busIdOffset: 0, seedSalt: 0, peakBuses: 180,
+    { id: "zambales", kind: 'express', line: "zambales", origin: "pasay", anchors: METRO_ANCHORS.concat([CANDABA_VIADUCT, DAU_BR], ZAMBALES_BASE.slice(54)), ends: ["Pasay", "Sta. Cruz"], outbound: "toward Olongapo / Iba / Sta. Cruz",
+      busIdOffset: 0, seedSalt: 7919, peakBuses: 54,
+      expressway: {"bal": 21, "cand": 22, "end": 23, "endPost": 84.15, "zone2": {"from": 23, "to": 24, "label": "SCTEX via Subic Bay (Dau \u2192 Olongapo)"}},
+      fixedLegKm: {"21": 40.0, "22": 34.59, "23": 57.046},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [23, "Mabalacat", "Pampanga"], [24, "Olongapo", "Zambales"], [27, "Subic", "Zambales"], [33, "Castillejos", "Zambales"], [36, "San Marcelino", "Zambales"], [38, "San Narciso", "Zambales"], [40, "San Felipe", "Zambales"], [45, "Cabangan", "Zambales"], [52, "Botolan", "Zambales"], [58, "Iba", "Zambales"], [63, "Palauig", "Zambales"], [66, "Masinloc", "Zambales"], [69, "Candelaria", "Zambales"], [73, "Sta. Cruz", "Zambales"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [23, "SCTEX"], [24, "Olongapo–Bugallon Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 24, "km": 153.45}, {"anchor": 58, "km": 224.85}, {"anchor": 77, "km": 287.35}], fareShortcuts: [] },
+    { id: "zambales@caloocan", kind: 'express', line: "zambales", origin: "caloocan", anchors: CALOOCAN_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], ZAMBALES_BASE.slice(54)), ends: ["Caloocan", "Sta. Cruz"], outbound: "toward Olongapo / Iba / Sta. Cruz",
+      busIdOffset: 10000, seedSalt: 15838, peakBuses: 27,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15, "zone2": {"from": 3, "to": 4, "label": "SCTEX via Subic Bay (Dau \u2192 Olongapo)"}},
+      fixedLegKm: {"1": 40.0, "2": 34.59, "3": 57.046},
+      towns: [[0, "Caloocan", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Olongapo", "Zambales"], [7, "Subic", "Zambales"], [13, "Castillejos", "Zambales"], [16, "San Marcelino", "Zambales"], [18, "San Narciso", "Zambales"], [20, "San Felipe", "Zambales"], [25, "Cabangan", "Zambales"], [32, "Botolan", "Zambales"], [38, "Iba", "Zambales"], [43, "Palauig", "Zambales"], [46, "Masinloc", "Zambales"], [49, "Candelaria", "Zambales"], [53, "Sta. Cruz", "Zambales"]],
+      roads: [[0, "EDSA"], [1, "NLEX (E1)"], [3, "SCTEX"], [4, "Olongapo–Bugallon Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 4, "km": 133.612}, {"anchor": 38, "km": 205.012}, {"anchor": 57, "km": 267.512}], fareShortcuts: [] },
+    { id: "zambales@sampaloc", kind: 'express', line: "zambales", origin: "sampaloc", anchors: SAMPALOC_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], ZAMBALES_BASE.slice(54)), ends: ["Sampaloc", "Sta. Cruz"], outbound: "toward Olongapo / Iba / Sta. Cruz",
+      busIdOffset: 20000, seedSalt: 23757, peakBuses: 27,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15, "zone2": {"from": 3, "to": 4, "label": "SCTEX via Subic Bay (Dau \u2192 Olongapo)"}},
+      fixedLegKm: {"1": 40.0, "2": 34.59, "3": 57.046},
+      towns: [[0, "Manila", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Olongapo", "Zambales"], [7, "Subic", "Zambales"], [13, "Castillejos", "Zambales"], [16, "San Marcelino", "Zambales"], [18, "San Narciso", "Zambales"], [20, "San Felipe", "Zambales"], [25, "Cabangan", "Zambales"], [32, "Botolan", "Zambales"], [38, "Iba", "Zambales"], [43, "Palauig", "Zambales"], [46, "Masinloc", "Zambales"], [49, "Candelaria", "Zambales"], [53, "Sta. Cruz", "Zambales"]],
+      roads: [[0, "A. Bonifacio Avenue"], [1, "NLEX (E1)"], [3, "SCTEX"], [4, "Olongapo–Bugallon Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}, {"anchor": 4, "km": 137.506}, {"anchor": 38, "km": 208.906}, {"anchor": 57, "km": 271.406}], fareShortcuts: [] },
+    { id: "pangasinan", kind: 'express', line: "pangasinan", origin: "pasay", anchors: METRO_ANCHORS.concat([CANDABA_VIADUCT, DAU_BR], PANGASINAN_BASE.slice(47)), ends: ["Pasay", "Bolinao"], outbound: "toward Dagupan / Lingayen / Alaminos / Bolinao",
+      busIdOffset: 1000, seedSalt: 31676, peakBuses: 50,
+      expressway: {"bal": 21, "cand": 22, "end": 23, "endPost": 84.15, "zone2": {"from": 23, "to": 24, "label": "SCTEX\u2013TPLEX (Dau \u2192 Gerona exit)"}},
+      fixedLegKm: {"21": 40.0, "22": 34.59, "23": 54.134},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [23, "Mabalacat", "Pampanga"], [24, "Gerona", "Tarlac"], [25, "Paniqui", "Tarlac"], [26, "San Manuel", "Tarlac"], [28, "Rosales", "Pangasinan"], [29, "Villasis", "Pangasinan"], [31, "Urdaneta", "Pangasinan"], [33, "Sta. Barbara", "Pangasinan"], [34, "Calasiao", "Pangasinan"], [35, "Dagupan", "Pangasinan"], [37, "Binmaley", "Pangasinan"], [41, "Lingayen", "Pangasinan"], [45, "Labrador", "Pangasinan"], [49, "Sual", "Pangasinan"], [55, "Alaminos", "Pangasinan"], [59, "Bani", "Pangasinan"], [65, "Bolinao", "Pangasinan"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [23, "SCTEX–TPLEX"], [24, "MacArthur Highway"], [31, "Urdaneta–Dagupan Road"], [35, "Dagupan–Lingayen Road"], [41, "Lingayen–Labrador Road"], [46, "Pangasinan–Zambales Road"], [57, "Alaminos–Bolinao Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "pangasinan@caloocan", kind: 'express', line: "pangasinan", origin: "caloocan", anchors: CALOOCAN_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], PANGASINAN_BASE.slice(47)), ends: ["Caloocan", "Bolinao"], outbound: "toward Dagupan / Lingayen / Alaminos / Bolinao",
+      busIdOffset: 11000, seedSalt: 39595, peakBuses: 26,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15, "zone2": {"from": 3, "to": 4, "label": "SCTEX\u2013TPLEX (Dau \u2192 Gerona exit)"}},
+      fixedLegKm: {"1": 40.0, "2": 34.59, "3": 54.134},
+      towns: [[0, "Caloocan", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Gerona", "Tarlac"], [5, "Paniqui", "Tarlac"], [6, "San Manuel", "Tarlac"], [8, "Rosales", "Pangasinan"], [9, "Villasis", "Pangasinan"], [11, "Urdaneta", "Pangasinan"], [13, "Sta. Barbara", "Pangasinan"], [14, "Calasiao", "Pangasinan"], [15, "Dagupan", "Pangasinan"], [17, "Binmaley", "Pangasinan"], [21, "Lingayen", "Pangasinan"], [25, "Labrador", "Pangasinan"], [29, "Sual", "Pangasinan"], [35, "Alaminos", "Pangasinan"], [39, "Bani", "Pangasinan"], [45, "Bolinao", "Pangasinan"]],
+      roads: [[0, "EDSA"], [1, "NLEX (E1)"], [3, "SCTEX–TPLEX"], [4, "MacArthur Highway"], [11, "Urdaneta–Dagupan Road"], [15, "Dagupan–Lingayen Road"], [21, "Lingayen–Labrador Road"], [26, "Pangasinan–Zambales Road"], [37, "Alaminos–Bolinao Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "pangasinan@sampaloc", kind: 'express', line: "pangasinan", origin: "sampaloc", anchors: SAMPALOC_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], PANGASINAN_BASE.slice(47)), ends: ["Sampaloc", "Bolinao"], outbound: "toward Dagupan / Lingayen / Alaminos / Bolinao",
+      busIdOffset: 21000, seedSalt: 47514, peakBuses: 26,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15, "zone2": {"from": 3, "to": 4, "label": "SCTEX\u2013TPLEX (Dau \u2192 Gerona exit)"}},
+      fixedLegKm: {"1": 40.0, "2": 34.59, "3": 54.134},
+      towns: [[0, "Manila", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Gerona", "Tarlac"], [5, "Paniqui", "Tarlac"], [6, "San Manuel", "Tarlac"], [8, "Rosales", "Pangasinan"], [9, "Villasis", "Pangasinan"], [11, "Urdaneta", "Pangasinan"], [13, "Sta. Barbara", "Pangasinan"], [14, "Calasiao", "Pangasinan"], [15, "Dagupan", "Pangasinan"], [17, "Binmaley", "Pangasinan"], [21, "Lingayen", "Pangasinan"], [25, "Labrador", "Pangasinan"], [29, "Sual", "Pangasinan"], [35, "Alaminos", "Pangasinan"], [39, "Bani", "Pangasinan"], [45, "Bolinao", "Pangasinan"]],
+      roads: [[0, "A. Bonifacio Avenue"], [1, "NLEX (E1)"], [3, "SCTEX–TPLEX"], [4, "MacArthur Highway"], [11, "Urdaneta–Dagupan Road"], [15, "Dagupan–Lingayen Road"], [21, "Lingayen–Labrador Road"], [26, "Pangasinan–Zambales Road"], [37, "Alaminos–Bolinao Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "baguio", kind: 'express', line: "baguio", origin: "pasay", anchors: METRO_ANCHORS.concat([CANDABA_VIADUCT, DAU_BR], PANGASINAN_BASE.slice(54, 55).concat(BAGUIO_EXT)), ends: ["Pasay", "Baguio City"], outbound: "toward Urdaneta / Sison / Baguio",
+      busIdOffset: 2000, seedSalt: 55433, peakBuses: 60,
+      expressway: {"bal": 21, "cand": 22, "end": 23, "endPost": 84.15, "zone2": {"from": 23, "to": 24, "label": "SCTEX\u2013TPLEX (Dau \u2192 Urdaneta exit)"}},
+      fixedLegKm: {"21": 40.0, "22": 34.59, "23": 102.648},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [23, "Mabalacat", "Pampanga"], [24, "Urdaneta", "Pangasinan"], [27, "Binalonan", "Pangasinan"], [31, "Pozorrubio", "Pangasinan"], [33, "Sison", "Pangasinan"], [35, "Rosario", "La Union"], [37, "Pugo", "La Union"], [48, "Tuba", "Benguet"], [49, "Baguio City", "Benguet"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [23, "SCTEX–TPLEX"], [24, "MacArthur Highway"], [36, "Rosario–Pugo Road"], [45, "Marcos Highway"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "baguio@caloocan", kind: 'express', line: "baguio", origin: "caloocan", anchors: CALOOCAN_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], PANGASINAN_BASE.slice(54, 55).concat(BAGUIO_EXT)), ends: ["Caloocan", "Baguio City"], outbound: "toward Urdaneta / Sison / Baguio",
+      busIdOffset: 12000, seedSalt: 63352, peakBuses: 30,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15, "zone2": {"from": 3, "to": 4, "label": "SCTEX\u2013TPLEX (Dau \u2192 Urdaneta exit)"}},
+      fixedLegKm: {"1": 40.0, "2": 34.59, "3": 102.648},
+      towns: [[0, "Caloocan", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Urdaneta", "Pangasinan"], [7, "Binalonan", "Pangasinan"], [11, "Pozorrubio", "Pangasinan"], [13, "Sison", "Pangasinan"], [15, "Rosario", "La Union"], [17, "Pugo", "La Union"], [28, "Tuba", "Benguet"], [29, "Baguio City", "Benguet"]],
+      roads: [[0, "EDSA"], [1, "NLEX (E1)"], [3, "SCTEX–TPLEX"], [4, "MacArthur Highway"], [16, "Rosario–Pugo Road"], [25, "Marcos Highway"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "baguio@sampaloc", kind: 'express', line: "baguio", origin: "sampaloc", anchors: SAMPALOC_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], PANGASINAN_BASE.slice(54, 55).concat(BAGUIO_EXT)), ends: ["Sampaloc", "Baguio City"], outbound: "toward Urdaneta / Sison / Baguio",
+      busIdOffset: 22000, seedSalt: 71271, peakBuses: 30,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15, "zone2": {"from": 3, "to": 4, "label": "SCTEX\u2013TPLEX (Dau \u2192 Urdaneta exit)"}},
+      fixedLegKm: {"1": 40.0, "2": 34.59, "3": 102.648},
+      towns: [[0, "Manila", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Urdaneta", "Pangasinan"], [7, "Binalonan", "Pangasinan"], [11, "Pozorrubio", "Pangasinan"], [13, "Sison", "Pangasinan"], [15, "Rosario", "La Union"], [17, "Pugo", "La Union"], [28, "Tuba", "Benguet"], [29, "Baguio City", "Benguet"]],
+      roads: [[0, "A. Bonifacio Avenue"], [1, "NLEX (E1)"], [3, "SCTEX–TPLEX"], [4, "MacArthur Highway"], [16, "Rosario–Pugo Road"], [25, "Marcos Highway"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan", kind: 'express', line: "cagayan", origin: "pasay", anchors: METRO_ANCHORS.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, CAGAYAN_APARRI)), ends: ["Pasay", "Aparri"], outbound: "toward Santiago / Ilagan / Tuguegarao / Aparri",
+      busIdOffset: 3000, seedSalt: 79190, peakBuses: 60,
+      expressway: {"bal": 21, "cand": 22, "end": 23, "endPost": 84.15},
+      fixedLegKm: {"21": 40.0, "22": 34.59},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [23, "Mabalacat", "Pampanga"], [24, "Mabalacat", "Pampanga"], [29, "Bamban", "Tarlac"], [31, "Capas", "Tarlac"], [36, "Tarlac City", "Tarlac"], [38, "Gerona", "Tarlac"], [39, "Pura", "Tarlac"], [40, "Guimba", "Nueva Ecija"], [41, "Sto. Domingo", "Nueva Ecija"], [42, "Muñoz", "Nueva Ecija"], [43, "San José City", "Nueva Ecija"], [47, "Carranglan", "Nueva Ecija"], [59, "Santa Fe", "Nueva Vizcaya"], [63, "Aritao", "Nueva Vizcaya"], [67, "Dupax del Sur", "Nueva Vizcaya"], [68, "Bambang", "Nueva Vizcaya"], [71, "Bayombong", "Nueva Vizcaya"], [76, "Solano", "Nueva Vizcaya"], [77, "Bagabag", "Nueva Vizcaya"], [81, "Diadi", "Nueva Vizcaya"], [86, "Cordon", "Isabela"], [88, "Santiago City", "Isabela"], [92, "Echague", "Isabela"], [94, "Alicia", "Isabela"], [97, "Cauayan City", "Isabela"], [101, "Reina Mercedes", "Isabela"], [102, "Naguilian", "Isabela"], [104, "Gamu", "Isabela"], [105, "Ilagan City", "Isabela"], [114, "Tumauini", "Isabela"], [120, "Cabagan", "Isabela"], [123, "San Pablo", "Isabela"], [126, "Tuguegarao City", "Cagayan"], [132, "Peñablanca", "Cagayan"], [134, "Tuguegarao City", "Cagayan"], [138, "Iguig", "Cagayan"], [144, "Amulung", "Cagayan"], [146, "Alcala", "Cagayan"], [150, "Gattaran", "Cagayan"], [162, "Lal-lo", "Cagayan"], [165, "Aparri", "Cagayan"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [23, "MacArthur Highway"], [38, "Gerona–Pura–Guimba Road"], [42, "Daang Maharlika"], [125, "Cagayan Valley Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan@caloocan", kind: 'express', line: "cagayan", origin: "caloocan", anchors: CALOOCAN_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, CAGAYAN_APARRI)), ends: ["Caloocan", "Aparri"], outbound: "toward Santiago / Ilagan / Tuguegarao / Aparri",
+      busIdOffset: 13000, seedSalt: 87109, peakBuses: 30,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15},
+      fixedLegKm: {"1": 40.0, "2": 34.59},
+      towns: [[0, "Caloocan", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Mabalacat", "Pampanga"], [9, "Bamban", "Tarlac"], [11, "Capas", "Tarlac"], [16, "Tarlac City", "Tarlac"], [18, "Gerona", "Tarlac"], [19, "Pura", "Tarlac"], [20, "Guimba", "Nueva Ecija"], [21, "Sto. Domingo", "Nueva Ecija"], [22, "Muñoz", "Nueva Ecija"], [23, "San José City", "Nueva Ecija"], [27, "Carranglan", "Nueva Ecija"], [39, "Santa Fe", "Nueva Vizcaya"], [43, "Aritao", "Nueva Vizcaya"], [47, "Dupax del Sur", "Nueva Vizcaya"], [48, "Bambang", "Nueva Vizcaya"], [51, "Bayombong", "Nueva Vizcaya"], [56, "Solano", "Nueva Vizcaya"], [57, "Bagabag", "Nueva Vizcaya"], [61, "Diadi", "Nueva Vizcaya"], [66, "Cordon", "Isabela"], [68, "Santiago City", "Isabela"], [72, "Echague", "Isabela"], [74, "Alicia", "Isabela"], [77, "Cauayan City", "Isabela"], [81, "Reina Mercedes", "Isabela"], [82, "Naguilian", "Isabela"], [84, "Gamu", "Isabela"], [85, "Ilagan City", "Isabela"], [94, "Tumauini", "Isabela"], [100, "Cabagan", "Isabela"], [103, "San Pablo", "Isabela"], [106, "Tuguegarao City", "Cagayan"], [112, "Peñablanca", "Cagayan"], [114, "Tuguegarao City", "Cagayan"], [118, "Iguig", "Cagayan"], [124, "Amulung", "Cagayan"], [126, "Alcala", "Cagayan"], [130, "Gattaran", "Cagayan"], [142, "Lal-lo", "Cagayan"], [145, "Aparri", "Cagayan"]],
+      roads: [[0, "EDSA"], [1, "NLEX (E1)"], [3, "MacArthur Highway"], [18, "Gerona–Pura–Guimba Road"], [22, "Daang Maharlika"], [105, "Cagayan Valley Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan@sampaloc", kind: 'express', line: "cagayan", origin: "sampaloc", anchors: SAMPALOC_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, CAGAYAN_APARRI)), ends: ["Sampaloc", "Aparri"], outbound: "toward Santiago / Ilagan / Tuguegarao / Aparri",
+      busIdOffset: 23000, seedSalt: 95028, peakBuses: 30,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15},
+      fixedLegKm: {"1": 40.0, "2": 34.59},
+      towns: [[0, "Manila", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Mabalacat", "Pampanga"], [9, "Bamban", "Tarlac"], [11, "Capas", "Tarlac"], [16, "Tarlac City", "Tarlac"], [18, "Gerona", "Tarlac"], [19, "Pura", "Tarlac"], [20, "Guimba", "Nueva Ecija"], [21, "Sto. Domingo", "Nueva Ecija"], [22, "Muñoz", "Nueva Ecija"], [23, "San José City", "Nueva Ecija"], [27, "Carranglan", "Nueva Ecija"], [39, "Santa Fe", "Nueva Vizcaya"], [43, "Aritao", "Nueva Vizcaya"], [47, "Dupax del Sur", "Nueva Vizcaya"], [48, "Bambang", "Nueva Vizcaya"], [51, "Bayombong", "Nueva Vizcaya"], [56, "Solano", "Nueva Vizcaya"], [57, "Bagabag", "Nueva Vizcaya"], [61, "Diadi", "Nueva Vizcaya"], [66, "Cordon", "Isabela"], [68, "Santiago City", "Isabela"], [72, "Echague", "Isabela"], [74, "Alicia", "Isabela"], [77, "Cauayan City", "Isabela"], [81, "Reina Mercedes", "Isabela"], [82, "Naguilian", "Isabela"], [84, "Gamu", "Isabela"], [85, "Ilagan City", "Isabela"], [94, "Tumauini", "Isabela"], [100, "Cabagan", "Isabela"], [103, "San Pablo", "Isabela"], [106, "Tuguegarao City", "Cagayan"], [112, "Peñablanca", "Cagayan"], [114, "Tuguegarao City", "Cagayan"], [118, "Iguig", "Cagayan"], [124, "Amulung", "Cagayan"], [126, "Alcala", "Cagayan"], [130, "Gattaran", "Cagayan"], [142, "Lal-lo", "Cagayan"], [145, "Aparri", "Cagayan"]],
+      roads: [[0, "A. Bonifacio Avenue"], [1, "NLEX (E1)"], [3, "MacArthur Highway"], [18, "Gerona–Pura–Guimba Road"], [22, "Daang Maharlika"], [105, "Cagayan Valley Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan-roxas", kind: 'express', line: "cagayan", origin: "pasay", anchors: METRO_ANCHORS.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, ROXAS_EXT)), ends: ["Pasay", "Tabuk"], outbound: "toward Santiago / Roxas / Tabuk",
+      busIdOffset: 4000, seedSalt: 102947, peakBuses: 26,
+      expressway: {"bal": 21, "cand": 22, "end": 23, "endPost": 84.15},
+      fixedLegKm: {"21": 40.0, "22": 34.59},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [23, "Mabalacat", "Pampanga"], [24, "Mabalacat", "Pampanga"], [29, "Bamban", "Tarlac"], [31, "Capas", "Tarlac"], [36, "Tarlac City", "Tarlac"], [38, "Gerona", "Tarlac"], [39, "Pura", "Tarlac"], [40, "Guimba", "Nueva Ecija"], [41, "Sto. Domingo", "Nueva Ecija"], [42, "Muñoz", "Nueva Ecija"], [43, "San José City", "Nueva Ecija"], [47, "Carranglan", "Nueva Ecija"], [59, "Santa Fe", "Nueva Vizcaya"], [63, "Aritao", "Nueva Vizcaya"], [67, "Dupax del Sur", "Nueva Vizcaya"], [68, "Bambang", "Nueva Vizcaya"], [71, "Bayombong", "Nueva Vizcaya"], [76, "Solano", "Nueva Vizcaya"], [77, "Bagabag", "Nueva Vizcaya"], [81, "Diadi", "Nueva Vizcaya"], [86, "Cordon", "Isabela"], [88, "Santiago City", "Isabela"], [91, "San Mateo", "Isabela"], [92, "Cabatuan", "Isabela"], [94, "Aurora", "Isabela"], [95, "San Manuel", "Isabela"], [97, "Roxas", "Isabela"], [100, "Mallig", "Isabela"], [102, "Quezon", "Isabela"], [103, "Tabuk City", "Kalinga"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [23, "MacArthur Highway"], [38, "Gerona–Pura–Guimba Road"], [42, "Daang Maharlika"], [89, "Santiago–Tuguegarao Road"], [102, "Nambaran–Isabela Road"], [104, "Kalinga–Cagayan Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan-roxas@caloocan", kind: 'express', line: "cagayan", origin: "caloocan", anchors: CALOOCAN_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, ROXAS_EXT)), ends: ["Caloocan", "Tabuk"], outbound: "toward Santiago / Roxas / Tabuk",
+      busIdOffset: 14000, seedSalt: 110866, peakBuses: 14,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15},
+      fixedLegKm: {"1": 40.0, "2": 34.59},
+      towns: [[0, "Caloocan", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Mabalacat", "Pampanga"], [9, "Bamban", "Tarlac"], [11, "Capas", "Tarlac"], [16, "Tarlac City", "Tarlac"], [18, "Gerona", "Tarlac"], [19, "Pura", "Tarlac"], [20, "Guimba", "Nueva Ecija"], [21, "Sto. Domingo", "Nueva Ecija"], [22, "Muñoz", "Nueva Ecija"], [23, "San José City", "Nueva Ecija"], [27, "Carranglan", "Nueva Ecija"], [39, "Santa Fe", "Nueva Vizcaya"], [43, "Aritao", "Nueva Vizcaya"], [47, "Dupax del Sur", "Nueva Vizcaya"], [48, "Bambang", "Nueva Vizcaya"], [51, "Bayombong", "Nueva Vizcaya"], [56, "Solano", "Nueva Vizcaya"], [57, "Bagabag", "Nueva Vizcaya"], [61, "Diadi", "Nueva Vizcaya"], [66, "Cordon", "Isabela"], [68, "Santiago City", "Isabela"], [71, "San Mateo", "Isabela"], [72, "Cabatuan", "Isabela"], [74, "Aurora", "Isabela"], [75, "San Manuel", "Isabela"], [77, "Roxas", "Isabela"], [80, "Mallig", "Isabela"], [82, "Quezon", "Isabela"], [83, "Tabuk City", "Kalinga"]],
+      roads: [[0, "EDSA"], [1, "NLEX (E1)"], [3, "MacArthur Highway"], [18, "Gerona–Pura–Guimba Road"], [22, "Daang Maharlika"], [69, "Santiago–Tuguegarao Road"], [82, "Nambaran–Isabela Road"], [84, "Kalinga–Cagayan Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan-roxas@sampaloc", kind: 'express', line: "cagayan", origin: "sampaloc", anchors: SAMPALOC_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, ROXAS_EXT)), ends: ["Sampaloc", "Tabuk"], outbound: "toward Santiago / Roxas / Tabuk",
+      busIdOffset: 24000, seedSalt: 118785, peakBuses: 14,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15},
+      fixedLegKm: {"1": 40.0, "2": 34.59},
+      towns: [[0, "Manila", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Mabalacat", "Pampanga"], [9, "Bamban", "Tarlac"], [11, "Capas", "Tarlac"], [16, "Tarlac City", "Tarlac"], [18, "Gerona", "Tarlac"], [19, "Pura", "Tarlac"], [20, "Guimba", "Nueva Ecija"], [21, "Sto. Domingo", "Nueva Ecija"], [22, "Muñoz", "Nueva Ecija"], [23, "San José City", "Nueva Ecija"], [27, "Carranglan", "Nueva Ecija"], [39, "Santa Fe", "Nueva Vizcaya"], [43, "Aritao", "Nueva Vizcaya"], [47, "Dupax del Sur", "Nueva Vizcaya"], [48, "Bambang", "Nueva Vizcaya"], [51, "Bayombong", "Nueva Vizcaya"], [56, "Solano", "Nueva Vizcaya"], [57, "Bagabag", "Nueva Vizcaya"], [61, "Diadi", "Nueva Vizcaya"], [66, "Cordon", "Isabela"], [68, "Santiago City", "Isabela"], [71, "San Mateo", "Isabela"], [72, "Cabatuan", "Isabela"], [74, "Aurora", "Isabela"], [75, "San Manuel", "Isabela"], [77, "Roxas", "Isabela"], [80, "Mallig", "Isabela"], [82, "Quezon", "Isabela"], [83, "Tabuk City", "Kalinga"]],
+      roads: [[0, "A. Bonifacio Avenue"], [1, "NLEX (E1)"], [3, "MacArthur Highway"], [18, "Gerona–Pura–Guimba Road"], [22, "Daang Maharlika"], [69, "Santiago–Tuguegarao Road"], [82, "Nambaran–Isabela Road"], [84, "Kalinga–Cagayan Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan-tuao", kind: 'express', line: "cagayan", origin: "pasay", anchors: METRO_ANCHORS.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, TUAO_EXT)), ends: ["Pasay", "Tuao"], outbound: "toward Santiago / Tuguegarao / Tuao",
+      busIdOffset: 5000, seedSalt: 126704, peakBuses: 18,
+      expressway: {"bal": 21, "cand": 22, "end": 23, "endPost": 84.15},
+      fixedLegKm: {"21": 40.0, "22": 34.59},
+      towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [23, "Mabalacat", "Pampanga"], [24, "Mabalacat", "Pampanga"], [29, "Bamban", "Tarlac"], [31, "Capas", "Tarlac"], [36, "Tarlac City", "Tarlac"], [38, "Gerona", "Tarlac"], [39, "Pura", "Tarlac"], [40, "Guimba", "Nueva Ecija"], [41, "Sto. Domingo", "Nueva Ecija"], [42, "Muñoz", "Nueva Ecija"], [43, "San José City", "Nueva Ecija"], [47, "Carranglan", "Nueva Ecija"], [59, "Santa Fe", "Nueva Vizcaya"], [63, "Aritao", "Nueva Vizcaya"], [67, "Dupax del Sur", "Nueva Vizcaya"], [68, "Bambang", "Nueva Vizcaya"], [71, "Bayombong", "Nueva Vizcaya"], [76, "Solano", "Nueva Vizcaya"], [77, "Bagabag", "Nueva Vizcaya"], [81, "Diadi", "Nueva Vizcaya"], [86, "Cordon", "Isabela"], [88, "Santiago City", "Isabela"], [92, "Echague", "Isabela"], [94, "Alicia", "Isabela"], [97, "Cauayan City", "Isabela"], [101, "Reina Mercedes", "Isabela"], [102, "Naguilian", "Isabela"], [104, "Gamu", "Isabela"], [105, "Ilagan City", "Isabela"], [114, "Tumauini", "Isabela"], [120, "Cabagan", "Isabela"], [123, "San Pablo", "Isabela"], [126, "Tuguegarao City", "Cagayan"], [132, "Solana", "Cagayan"], [137, "Piat", "Cagayan"], [139, "Tuao", "Cagayan"]],
+      roads: [[0, "EDSA"], [21, "NLEX (E1)"], [23, "MacArthur Highway"], [38, "Gerona–Pura–Guimba Road"], [42, "Daang Maharlika"], [125, "Cagayan Valley Road"], [131, "Cagayan–Apayao Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan-tuao@caloocan", kind: 'express', line: "cagayan", origin: "caloocan", anchors: CALOOCAN_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, TUAO_EXT)), ends: ["Caloocan", "Tuao"], outbound: "toward Santiago / Tuguegarao / Tuao",
+      busIdOffset: 15000, seedSalt: 134623, peakBuses: 9,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15},
+      fixedLegKm: {"1": 40.0, "2": 34.59},
+      towns: [[0, "Caloocan", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Mabalacat", "Pampanga"], [9, "Bamban", "Tarlac"], [11, "Capas", "Tarlac"], [16, "Tarlac City", "Tarlac"], [18, "Gerona", "Tarlac"], [19, "Pura", "Tarlac"], [20, "Guimba", "Nueva Ecija"], [21, "Sto. Domingo", "Nueva Ecija"], [22, "Muñoz", "Nueva Ecija"], [23, "San José City", "Nueva Ecija"], [27, "Carranglan", "Nueva Ecija"], [39, "Santa Fe", "Nueva Vizcaya"], [43, "Aritao", "Nueva Vizcaya"], [47, "Dupax del Sur", "Nueva Vizcaya"], [48, "Bambang", "Nueva Vizcaya"], [51, "Bayombong", "Nueva Vizcaya"], [56, "Solano", "Nueva Vizcaya"], [57, "Bagabag", "Nueva Vizcaya"], [61, "Diadi", "Nueva Vizcaya"], [66, "Cordon", "Isabela"], [68, "Santiago City", "Isabela"], [72, "Echague", "Isabela"], [74, "Alicia", "Isabela"], [77, "Cauayan City", "Isabela"], [81, "Reina Mercedes", "Isabela"], [82, "Naguilian", "Isabela"], [84, "Gamu", "Isabela"], [85, "Ilagan City", "Isabela"], [94, "Tumauini", "Isabela"], [100, "Cabagan", "Isabela"], [103, "San Pablo", "Isabela"], [106, "Tuguegarao City", "Cagayan"], [112, "Solana", "Cagayan"], [117, "Piat", "Cagayan"], [119, "Tuao", "Cagayan"]],
+      roads: [[0, "EDSA"], [1, "NLEX (E1)"], [3, "MacArthur Highway"], [18, "Gerona–Pura–Guimba Road"], [22, "Daang Maharlika"], [105, "Cagayan Valley Road"], [111, "Cagayan–Apayao Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+    { id: "cagayan-tuao@sampaloc", kind: 'express', line: "cagayan", origin: "sampaloc", anchors: SAMPALOC_FEEDER.concat([CANDABA_VIADUCT, DAU_BR], NORTH_TAIL.slice(1, 16).concat(CAGAYAN_LINK, CAGAYAN_MAIN, CAGAYAN_NORTH, TUAO_EXT)), ends: ["Sampaloc", "Tuao"], outbound: "toward Santiago / Tuguegarao / Tuao",
+      busIdOffset: 25000, seedSalt: 142542, peakBuses: 9,
+      expressway: {"bal": 1, "cand": 2, "end": 3, "endPost": 84.15},
+      fixedLegKm: {"1": 40.0, "2": 34.59},
+      towns: [[0, "Manila", "Metro Manila"], [3, "Mabalacat", "Pampanga"], [4, "Mabalacat", "Pampanga"], [9, "Bamban", "Tarlac"], [11, "Capas", "Tarlac"], [16, "Tarlac City", "Tarlac"], [18, "Gerona", "Tarlac"], [19, "Pura", "Tarlac"], [20, "Guimba", "Nueva Ecija"], [21, "Sto. Domingo", "Nueva Ecija"], [22, "Muñoz", "Nueva Ecija"], [23, "San José City", "Nueva Ecija"], [27, "Carranglan", "Nueva Ecija"], [39, "Santa Fe", "Nueva Vizcaya"], [43, "Aritao", "Nueva Vizcaya"], [47, "Dupax del Sur", "Nueva Vizcaya"], [48, "Bambang", "Nueva Vizcaya"], [51, "Bayombong", "Nueva Vizcaya"], [56, "Solano", "Nueva Vizcaya"], [57, "Bagabag", "Nueva Vizcaya"], [61, "Diadi", "Nueva Vizcaya"], [66, "Cordon", "Isabela"], [68, "Santiago City", "Isabela"], [72, "Echague", "Isabela"], [74, "Alicia", "Isabela"], [77, "Cauayan City", "Isabela"], [81, "Reina Mercedes", "Isabela"], [82, "Naguilian", "Isabela"], [84, "Gamu", "Isabela"], [85, "Ilagan City", "Isabela"], [94, "Tumauini", "Isabela"], [100, "Cabagan", "Isabela"], [103, "San Pablo", "Isabela"], [106, "Tuguegarao City", "Cagayan"], [112, "Solana", "Cagayan"], [117, "Piat", "Cagayan"], [119, "Tuao", "Cagayan"]],
+      roads: [[0, "A. Bonifacio Avenue"], [1, "NLEX (E1)"], [3, "MacArthur Highway"], [18, "Gerona–Pura–Guimba Road"], [22, "Daang Maharlika"], [105, "Cagayan Valley Road"], [111, "Cagayan–Apayao Road"]],
+      roadKmRef: [{"anchor": 0, "km": 0}], fareShortcuts: [] },
+
+    { id: 'zambales-ic', kind: 'inner', origin: 'pasay', line: 'zambales', anchors: IC_ZAMBALES_ANCHORS, ends: ['Pasay', 'Sta. Cruz'], outbound: 'toward Olongapo / Iba / Sta. Cruz',
+      busIdOffset: 30000, seedSalt: 104729, peakBuses: 72,
       towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Caloocan", "Metro Manila"], [23, "Valenzuela", "Metro Manila"], [25, "Meycauayan", "Bulacan"], [26, "Marilao", "Bulacan"], [27, "Bocaue", "Bulacan"], [30, "Balagtas", "Bulacan"], [31, "Guiguinto", "Bulacan"], [34, "Malolos", "Bulacan"], [39, "Calumpit", "Bulacan"], [42, "Apalit", "Pampanga"], [44, "San Simon", "Pampanga"], [45, "Minalin", "Pampanga"], [46, "Sto. Tomas", "Pampanga"], [48, "San Fernando", "Pampanga"], [54, "Bacolor", "Pampanga"], [56, "Guagua", "Pampanga"], [58, "Lubao", "Pampanga"], [66, "Hermosa", "Bataan"], [67, "Dinalupihan", "Bataan"], [74, "Olongapo", "Zambales"], [79, "Subic", "Zambales"], [85, "Castillejos", "Zambales"], [88, "San Marcelino", "Zambales"], [90, "San Narciso", "Zambales"], [92, "San Felipe", "Zambales"], [97, "Cabangan", "Zambales"], [104, "Botolan", "Zambales"], [110, "Iba", "Zambales"], [115, "Palauig", "Zambales"], [118, "Masinloc", "Zambales"], [121, "Candelaria", "Zambales"], [125, "Sta. Cruz", "Zambales"]],
       roads: [[0, "EDSA"], [22, "MacArthur Highway"], [51, "Jose Abad Santos Avenue (JASA)"], [76, "Olongapo–Bugallon Road"]],
       roadKmRef: [{ anchor: 0, km: 0 }, { anchor: METRO_N, km: 23.79 }, { anchor: METRO_N + 54, km: 23.79 + 130.6 }, { anchor: METRO_N + 88, km: 23.79 + 202.0 }, { anchor: METRO_N + 107, km: 23.79 + 264.5 }],
       fareShortcuts: [] },
-    { id: 'pangasinan', line: 'pangasinan', anchors: PANGASINAN_ANCHORS, ends: ['Pasay', 'Bolinao'], outbound: 'toward Dagupan / Lingayen / Alaminos / Bolinao',
-      busIdOffset: 1000, seedSalt: 7919, peakBuses: 170,
+    { id: 'pangasinan-ic', kind: 'inner', origin: 'pasay', line: 'pangasinan', anchors: IC_PANGASINAN_ANCHORS, ends: ['Pasay', 'Bolinao'], outbound: 'toward Dagupan / Lingayen / Alaminos / Bolinao',
+      busIdOffset: 31000, seedSalt: 112648, peakBuses: 68,
       towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Caloocan", "Metro Manila"], [23, "Valenzuela", "Metro Manila"], [25, "Meycauayan", "Bulacan"], [26, "Marilao", "Bulacan"], [27, "Bocaue", "Bulacan"], [30, "Balagtas", "Bulacan"], [31, "Guiguinto", "Bulacan"], [34, "Malolos", "Bulacan"], [39, "Calumpit", "Bulacan"], [42, "Apalit", "Pampanga"], [44, "San Simon", "Pampanga"], [45, "Minalin", "Pampanga"], [46, "Sto. Tomas", "Pampanga"], [48, "San Fernando", "Pampanga"], [51, "Angeles", "Pampanga"], [54, "Mabalacat", "Pampanga"], [60, "Bamban", "Tarlac"], [62, "Capas", "Tarlac"], [67, "Tarlac City", "Tarlac"], [69, "Gerona", "Tarlac"], [70, "Paniqui", "Tarlac"], [71, "San Manuel", "Tarlac"], [73, "Rosales", "Pangasinan"], [74, "Villasis", "Pangasinan"], [76, "Urdaneta", "Pangasinan"], [78, "Sta. Barbara", "Pangasinan"], [79, "Calasiao", "Pangasinan"], [80, "Dagupan", "Pangasinan"], [82, "Binmaley", "Pangasinan"], [86, "Lingayen", "Pangasinan"], [90, "Labrador", "Pangasinan"], [94, "Sual", "Pangasinan"], [100, "Alaminos", "Pangasinan"], [104, "Bani", "Pangasinan"], [110, "Bolinao", "Pangasinan"]],
       roads: [[0, "EDSA"], [22, "MacArthur Highway"], [76, "Urdaneta–Dagupan Road"], [80, "Dagupan–Lingayen Road"], [86, "Lingayen–Labrador Road"], [91, "Pangasinan–Zambales Road"], [102, "Alaminos–Bolinao Road"]],
       roadKmRef: [{ anchor: 0, km: 0 }, { anchor: METRO_N, km: 23.79 }, { anchor: METRO_N + 28, km: 23.79 + 68.73 }], // then 1:1 (straight highways)
       // Tarlac → Labrador via Romulo Hwy / Camiling (DPWH stations): 88.2 km vs 118.7 km through Dagupan and Lingayen.
       fareShortcuts: [{ fromAnchor: METRO_N + 46, toAnchor: METRO_N + 69, roadKm: 88.2, via: 'Camiling' }] },
-    { id: 'baguio', line: 'baguio', anchors: BAGUIO_ANCHORS, ends: ['Pasay', 'Baguio City'], outbound: 'toward Urdaneta / Sison / Baguio',
-      busIdOffset: 2000, seedSalt: 15331, peakBuses: 200,
+    { id: 'baguio-ic', kind: 'inner', origin: 'pasay', line: 'baguio', anchors: IC_BAGUIO_ANCHORS, ends: ['Pasay', 'Baguio City'], outbound: 'toward Urdaneta / Sison / Baguio',
+      busIdOffset: 32000, seedSalt: 120060, peakBuses: 80,
       towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Caloocan", "Metro Manila"], [23, "Valenzuela", "Metro Manila"], [25, "Meycauayan", "Bulacan"], [26, "Marilao", "Bulacan"], [27, "Bocaue", "Bulacan"], [30, "Balagtas", "Bulacan"], [31, "Guiguinto", "Bulacan"], [34, "Malolos", "Bulacan"], [39, "Calumpit", "Bulacan"], [42, "Apalit", "Pampanga"], [44, "San Simon", "Pampanga"], [45, "Minalin", "Pampanga"], [46, "Sto. Tomas", "Pampanga"], [48, "San Fernando", "Pampanga"], [51, "Angeles", "Pampanga"], [54, "Mabalacat", "Pampanga"], [60, "Bamban", "Tarlac"], [62, "Capas", "Tarlac"], [67, "Tarlac City", "Tarlac"], [69, "Gerona", "Tarlac"], [70, "Paniqui", "Tarlac"], [71, "San Manuel", "Tarlac"], [73, "Rosales", "Pangasinan"], [74, "Villasis", "Pangasinan"], [76, "Urdaneta", "Pangasinan"], [79, "Binalonan", "Pangasinan"], [83, "Pozorrubio", "Pangasinan"], [85, "Sison", "Pangasinan"], [87, "Rosario", "La Union"], [89, "Pugo", "La Union"], [100, "Tuba", "Benguet"], [101, "Baguio City", "Benguet"]],
       roads: [[0, "EDSA"], [22, "MacArthur Highway"], [88, "Rosario–Pugo Road"], [97, "Marcos Highway"]],
       roadKmRef: [{ anchor: 0, km: 0 }, { anchor: METRO_N, km: 23.79 }, { anchor: METRO_N + 28, km: 23.79 + 68.73 }], fareShortcuts: [] },
-    { id: 'cagayan', line: 'cagayan', anchors: CAGAYAN_TRUNK.concat(CAGAYAN_NORTH, CAGAYAN_APARRI), ends: ['Pasay', 'Aparri'], outbound: 'toward Santiago / Ilagan / Tuguegarao / Aparri',
-      busIdOffset: 3000, seedSalt: 23011, peakBuses: 200,
+    { id: 'cagayan-ic', kind: 'inner', origin: 'pasay', line: 'cagayan', anchors: IC_CAGAYAN_TRUNK.concat(CAGAYAN_NORTH, CAGAYAN_APARRI), ends: ['Pasay', 'Aparri'], outbound: 'toward Santiago / Ilagan / Tuguegarao / Aparri',
+      busIdOffset: 33000, seedSalt: 127740, peakBuses: 80,
       towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Caloocan", "Metro Manila"], [23, "Valenzuela", "Metro Manila"], [25, "Meycauayan", "Bulacan"], [26, "Marilao", "Bulacan"], [27, "Bocaue", "Bulacan"], [30, "Balagtas", "Bulacan"], [31, "Guiguinto", "Bulacan"], [34, "Malolos", "Bulacan"], [39, "Calumpit", "Bulacan"], [42, "Apalit", "Pampanga"], [44, "San Simon", "Pampanga"], [45, "Minalin", "Pampanga"], [46, "Sto. Tomas", "Pampanga"], [48, "San Fernando", "Pampanga"], [51, "Angeles", "Pampanga"], [54, "Mabalacat", "Pampanga"], [60, "Bamban", "Tarlac"], [62, "Capas", "Tarlac"], [67, "Tarlac City", "Tarlac"], [69, "Gerona", "Tarlac"], [70, "Pura", "Tarlac"], [71, "Guimba", "Nueva Ecija"], [72, "Sto. Domingo", "Nueva Ecija"], [73, "Muñoz", "Nueva Ecija"], [74, "San José City", "Nueva Ecija"], [78, "Carranglan", "Nueva Ecija"], [90, "Santa Fe", "Nueva Vizcaya"], [94, "Aritao", "Nueva Vizcaya"], [98, "Dupax del Sur", "Nueva Vizcaya"], [99, "Bambang", "Nueva Vizcaya"], [102, "Bayombong", "Nueva Vizcaya"], [107, "Solano", "Nueva Vizcaya"], [108, "Bagabag", "Nueva Vizcaya"], [112, "Diadi", "Nueva Vizcaya"], [117, "Cordon", "Isabela"], [119, "Santiago City", "Isabela"], [123, "Echague", "Isabela"], [125, "Alicia", "Isabela"], [128, "Cauayan City", "Isabela"], [132, "Reina Mercedes", "Isabela"], [133, "Naguilian", "Isabela"], [135, "Gamu", "Isabela"], [136, "Ilagan City", "Isabela"], [145, "Tumauini", "Isabela"], [151, "Cabagan", "Isabela"], [154, "San Pablo", "Isabela"], [157, "Tuguegarao City", "Cagayan"], [163, "Peñablanca", "Cagayan"], [165, "Tuguegarao City", "Cagayan"], [169, "Iguig", "Cagayan"], [175, "Amulung", "Cagayan"], [177, "Alcala", "Cagayan"], [181, "Gattaran", "Cagayan"], [193, "Lal-lo", "Cagayan"], [196, "Aparri", "Cagayan"]],
       roads: [[0, "EDSA"], [22, "MacArthur Highway"], [69, "Gerona–Pura–Guimba Road"], [73, "Daang Maharlika"], [156, "Cagayan Valley Road"]],
       roadKmRef: [{ anchor: 0, km: 0 }, { anchor: METRO_N, km: 23.79 }, { anchor: METRO_N + 28, km: 23.79 + 68.73 }], fareShortcuts: [] },
-    { id: 'cagayan-roxas', line: 'cagayan', anchors: CAGAYAN_TRUNK.concat(ROXAS_EXT), ends: ['Pasay', 'Tabuk'], outbound: 'toward Santiago / Roxas / Tabuk',
-      busIdOffset: 4000, seedSalt: 30911, peakBuses: 90,
+    { id: 'cagayan-roxas-ic', kind: 'inner', origin: 'pasay', line: 'cagayan', anchors: IC_CAGAYAN_TRUNK.concat(ROXAS_EXT), ends: ['Pasay', 'Tabuk'], outbound: 'toward Santiago / Roxas / Tabuk',
+      busIdOffset: 34000, seedSalt: 135640, peakBuses: 36,
       towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Caloocan", "Metro Manila"], [23, "Valenzuela", "Metro Manila"], [25, "Meycauayan", "Bulacan"], [26, "Marilao", "Bulacan"], [27, "Bocaue", "Bulacan"], [30, "Balagtas", "Bulacan"], [31, "Guiguinto", "Bulacan"], [34, "Malolos", "Bulacan"], [39, "Calumpit", "Bulacan"], [42, "Apalit", "Pampanga"], [44, "San Simon", "Pampanga"], [45, "Minalin", "Pampanga"], [46, "Sto. Tomas", "Pampanga"], [48, "San Fernando", "Pampanga"], [51, "Angeles", "Pampanga"], [54, "Mabalacat", "Pampanga"], [60, "Bamban", "Tarlac"], [62, "Capas", "Tarlac"], [67, "Tarlac City", "Tarlac"], [69, "Gerona", "Tarlac"], [70, "Pura", "Tarlac"], [71, "Guimba", "Nueva Ecija"], [72, "Sto. Domingo", "Nueva Ecija"], [73, "Muñoz", "Nueva Ecija"], [74, "San José City", "Nueva Ecija"], [78, "Carranglan", "Nueva Ecija"], [90, "Santa Fe", "Nueva Vizcaya"], [94, "Aritao", "Nueva Vizcaya"], [98, "Dupax del Sur", "Nueva Vizcaya"], [99, "Bambang", "Nueva Vizcaya"], [102, "Bayombong", "Nueva Vizcaya"], [107, "Solano", "Nueva Vizcaya"], [108, "Bagabag", "Nueva Vizcaya"], [112, "Diadi", "Nueva Vizcaya"], [117, "Cordon", "Isabela"], [119, "Santiago City", "Isabela"], [122, "San Mateo", "Isabela"], [123, "Cabatuan", "Isabela"], [125, "Aurora", "Isabela"], [126, "San Manuel", "Isabela"], [128, "Roxas", "Isabela"], [131, "Mallig", "Isabela"], [133, "Quezon", "Isabela"], [134, "Tabuk City", "Kalinga"]],
       roads: [[0, "EDSA"], [22, "MacArthur Highway"], [69, "Gerona–Pura–Guimba Road"], [73, "Daang Maharlika"], [120, "Santiago–Tuguegarao Road"], [133, "Nambaran–Isabela Road"], [135, "Kalinga–Cagayan Road"]],
       roadKmRef: [{ anchor: 0, km: 0 }, { anchor: METRO_N, km: 23.79 }, { anchor: METRO_N + 28, km: 23.79 + 68.73 }], fareShortcuts: [] },
-    { id: 'cagayan-tuao', line: 'cagayan', anchors: CAGAYAN_TRUNK.concat(CAGAYAN_NORTH, TUAO_EXT), ends: ['Pasay', 'Tuao'], outbound: 'toward Santiago / Tuguegarao / Tuao',
-      busIdOffset: 5000, seedSalt: 38833, peakBuses: 60,
+    { id: 'cagayan-tuao-ic', kind: 'inner', origin: 'pasay', line: 'cagayan', anchors: IC_CAGAYAN_TRUNK.concat(CAGAYAN_NORTH, TUAO_EXT), ends: ['Pasay', 'Tuao'], outbound: 'toward Santiago / Tuguegarao / Tuao',
+      busIdOffset: 35000, seedSalt: 143562, peakBuses: 24,
       towns: [[0, "Pasay", "Metro Manila"], [3, "Makati", "Metro Manila"], [7, "Mandaluyong", "Metro Manila"], [11, "Quezon City", "Metro Manila"], [22, "Caloocan", "Metro Manila"], [23, "Valenzuela", "Metro Manila"], [25, "Meycauayan", "Bulacan"], [26, "Marilao", "Bulacan"], [27, "Bocaue", "Bulacan"], [30, "Balagtas", "Bulacan"], [31, "Guiguinto", "Bulacan"], [34, "Malolos", "Bulacan"], [39, "Calumpit", "Bulacan"], [42, "Apalit", "Pampanga"], [44, "San Simon", "Pampanga"], [45, "Minalin", "Pampanga"], [46, "Sto. Tomas", "Pampanga"], [48, "San Fernando", "Pampanga"], [51, "Angeles", "Pampanga"], [54, "Mabalacat", "Pampanga"], [60, "Bamban", "Tarlac"], [62, "Capas", "Tarlac"], [67, "Tarlac City", "Tarlac"], [69, "Gerona", "Tarlac"], [70, "Pura", "Tarlac"], [71, "Guimba", "Nueva Ecija"], [72, "Sto. Domingo", "Nueva Ecija"], [73, "Muñoz", "Nueva Ecija"], [74, "San José City", "Nueva Ecija"], [78, "Carranglan", "Nueva Ecija"], [90, "Santa Fe", "Nueva Vizcaya"], [94, "Aritao", "Nueva Vizcaya"], [98, "Dupax del Sur", "Nueva Vizcaya"], [99, "Bambang", "Nueva Vizcaya"], [102, "Bayombong", "Nueva Vizcaya"], [107, "Solano", "Nueva Vizcaya"], [108, "Bagabag", "Nueva Vizcaya"], [112, "Diadi", "Nueva Vizcaya"], [117, "Cordon", "Isabela"], [119, "Santiago City", "Isabela"], [123, "Echague", "Isabela"], [125, "Alicia", "Isabela"], [128, "Cauayan City", "Isabela"], [132, "Reina Mercedes", "Isabela"], [133, "Naguilian", "Isabela"], [135, "Gamu", "Isabela"], [136, "Ilagan City", "Isabela"], [145, "Tumauini", "Isabela"], [151, "Cabagan", "Isabela"], [154, "San Pablo", "Isabela"], [157, "Tuguegarao City", "Cagayan"], [163, "Solana", "Cagayan"], [168, "Piat", "Cagayan"], [170, "Tuao", "Cagayan"]],
       roads: [[0, "EDSA"], [22, "MacArthur Highway"], [69, "Gerona–Pura–Guimba Road"], [73, "Daang Maharlika"], [156, "Cagayan Valley Road"], [162, "Cagayan–Apayao Road"]],
       roadKmRef: [{ anchor: 0, km: 0 }, { anchor: METRO_N, km: 23.79 }, { anchor: METRO_N + 28, km: 23.79 + 68.73 }], fareShortcuts: [] }
@@ -2411,7 +2591,7 @@
     let acc = 0;
     for (let i = 0; i < A.length - 1; i++) {
       route.legStartKm.push(acc);
-      const km = haversineKm(A[i], A[i + 1]) * ROAD_LENGTH_FACTOR;
+      const km = def.fixedLegKm && def.fixedLegKm[i] !== undefined ? def.fixedLegKm[i] : haversineKm(A[i], A[i + 1]) * ROAD_LENGTH_FACTOR;
       route.legKm.push(km);
       acc += km;
     }
@@ -2494,7 +2674,63 @@
       });
       return { km, via };
     };
-    route.dirText = dir => 'To ' + (dir === 1 ? route.ends[1] : route.ends[0]);
+    // NLEX: exits placed by km post along this route's expressway legs.
+    route.exits = [];
+    if (def.expressway) {
+      const e = def.expressway;
+      const pts = [[route.anchorKm(e.bal), NLEX_BAL_POST], [route.anchorKm(e.cand), NLEX_CAND_POST], [route.anchorKm(e.end), e.endPost]];
+      const kmForPost = post => {
+        for (let i = 1; i < pts.length; i++) {
+          if (post <= pts[i][1]) return pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * (post - pts[i - 1][1]) / (pts[i][1] - pts[i - 1][1]);
+        }
+        return pts[pts.length - 1][0];
+      };
+      route.exStartKm = pts[0][0];
+      route.exEndKm = pts[2][0];
+      route.exits = NLEX_EXITS.filter(x => x.post <= e.endPost - 0.5).map(x => Object.assign({}, x, { km: kmForPost(x.post) }));
+    }
+    // On the expressway = between Balintawak and the last exit (the road after the exit is ordinary road).
+    // On E1 = after the bus enters NLEX at Balintawak and before it leaves the expressway.
+    // (E1 ends at the exit where the bus leaves: San Fernando exit for Zambales, Dau exit for the northern lines;
+    //  the short road from that exit to the terminal/MacArthur is ordinary road.)
+    // Closed sections: NLEX from Balintawak to the Dau exit (only stop: Tabang), then for some Express services
+    // SCTEX/TPLEX from the Dau terminal to their exit (no stops). Boundaries (Balintawak, Dau terminal, the exit) are boardable.
+    route.zones = [];
+    if (route.exits.length) {
+      route.zones.push({ from: route.exStartKm, to: route.exits[route.exits.length - 1].km, stops: [], name: 'NLEX (E1)' });
+      if (def.expressway.zone2) {
+        const z = def.expressway.zone2;
+        route.zones.push({ from: route.anchorKm(z.from), to: route.anchorKm(z.to), stops: [], name: z.label, road: z.label.split(' (')[0] });
+      }
+    }
+    route.zoneAt = km => route.zones.find(z => km > z.from + 0.05 && km < z.to - 0.05) || null;
+    route.onExpressway = km => !!route.zoneAt(km);
+    if (def.expressway) {
+      const kmTabang = route.exStartKm + (route.anchorKm(def.expressway.cand) - route.exStartKm) * (TABANG_POST - NLEX_BAL_POST) / (NLEX_CAND_POST - NLEX_BAL_POST);
+      route.tabangKm = kmTabang;
+      route.zones[0].stops.push(kmTabang);
+    }
+    // Where a rider can get on/off near `coord`: anywhere on ordinary roads. On E1 only at Tabang (Guiguinto), or
+    // before the bus enters NLEX (Balintawak side) / after it leaves (San Fernando terminal or Dau).
+    route.boardKmAt = coord => {
+      const km = route.kmAt(coord);
+      const zone = route.zoneAt(km);
+      if (!zone) return km;
+      const choices = [zone.from, zone.to].concat(zone.stops);
+      let best = null;
+      choices.forEach(c => { const d = haversineKm(coord, route.pointAt(c)); if (!best || d < best.d) best = { d, km: c }; });
+      return best.km;
+    };
+    // Is `coord` actually on the expressway (not beside it, and not at the Tabang stop)?
+    route.isOnE1 = coord => {
+      if (!route.exits.length) return false;
+      const km = route.kmAt(coord);
+      const zone = route.zoneAt(km);
+      return !!zone && haversineKm(coord, route.pointAt(km)) < 0.2 && zone.stops.every(st => haversineKm(coord, route.pointAt(st)) > 0.4);
+    };
+    route.exitAt = km => route.exits.reduce((b, x) => (!b || Math.abs(x.km - km) < Math.abs(b.km - km) ? x : b), null);
+    route.kindLabel = def.kind === 'inner' ? 'Inner Cities' : 'Express';
+    route.dirText = dir => route.kindLabel + ' · To ' + (dir === 1 ? route.ends[1] : route.ends[0]);
     route.busesAt = bucket => Math.round(route.peakBuses * FLEET_SHARE[bucket]);
     route.buildIndex(route.straightLegs());
     route.legSource = route.legGeoms.map(() => 'straight');
@@ -2504,11 +2740,13 @@
   const ROUTE_BY_ID = Object.fromEntries(ROUTES.map(r => [r.id, r]));
   // Which services stop at each station (passes within 1.5 km).
   MAJOR_TERMINALS.forEach(t => {
-    t.lines = ROUTES.filter(r => haversineKm(t.coord, r.pointAt(r.kmAt(t.coord))) < 1.5).map(r => r.id);
+    // (stations sit on ordinary roads: a bus on NLEX doesn't stop at a terminal it merely passes near)
+    t.lines = ROUTES.filter(r => { const km = r.kmAt(t.coord); return !r.onExpressway(km) && haversineKm(t.coord, r.pointAt(km)) < 1.5; }).map(r => r.id);
   });
   function lineNamesOf(routes) { return [...new Set(routes.map(r => r.name))]; }
   // For display: "Baguio Line", "Zambales Line or Pangasinan Line", or "any line" on the shared road.
   function linesLabel(routes) { const n = lineNamesOf(routes); return n.length > 2 ? 'any line (shared road)' : n.join(' or '); }
+  LANDMARKS.push({ name: 'Tabang Bus Stop', note: 'Express buses on NLEX (E1) stop only here · Guiguinto, Bulacan', coord: ROUTE_BY_ID.pangasinan.pointAt(ROUTE_BY_ID.pangasinan.tabangKm) });
   // Stations are searchable places too (for search, fares and BusBoy).
   MAJOR_TERMINALS.forEach(t => {
     if (LANDMARKS.some(l => l.name === t.name)) return;
@@ -2521,9 +2759,9 @@
   // road get buses from both lines.
   function tripRouteOptions(originC, destC) {
     const opts = ROUTES.map(route => {
-      const originKm = route.kmAt(originC);
+      const originKm = route.boardKmAt(originC);
       const originOff = haversineKm(originC, route.pointAt(originKm));
-      const destKm = destC ? route.kmAt(destC) : null;
+      const destKm = destC ? route.boardKmAt(destC) : null;
       const destOff = destC ? haversineKm(destC, route.pointAt(destKm)) : 0;
       return { route, originKm, destKm, originOff, destOff, score: Math.max(originOff, destOff) };
     }).sort((a, b) => a.score - b.score);
@@ -3070,6 +3308,15 @@
   let nearestTripOption = null; // best two-bus trip for the current origin → destination, if one is needed
   function updateNearestBusETA(multiplier) {
     if (!originCoord) return;
+    const noPickup = trackedBusId === null && onE1(originCoord);
+    ecTrackBtn.style.visibility = noPickup ? 'hidden' : ''; // nothing to track from an expressway
+    if (noPickup) {
+      nearestTripOption = null; nearestApproachingBus = null;
+      etaLabel.textContent = 'You’re on an expressway';
+      etaValueEl.textContent = 'No pickup here';
+      etaPlateEl.textContent = 'Board at Tabang, Dau, or after the exit';
+      return;
+    }
     nearestTripOption = null;
     if (destinationCoord && tripSkeleton(originCoord, destinationCoord)) {
       const opts = pickTripOptions(planTrips(originCoord, destinationCoord, destinationInput.value, multiplier));
@@ -3179,7 +3426,10 @@
     const tracking = trackedBusId !== null;
     document.body.classList.toggle('tracking-active', tracking);
     const rb = document.getElementById('recenterBus');
-    if (rb) rb.classList.toggle('hidden', !tracking);
+    const riding = typeof isRidingBus !== 'undefined' && isRidingBus;
+    if (rb) rb.classList.toggle('hidden', !tracking || riding); // riding: "my location" is the bus
+    const rm = document.getElementById('recenterMe');
+    if (rm) rm.querySelector('span').textContent = riding ? 'Recenter' : 'My location';
     if (tracking) autocompleteList.classList.add('hidden');
     if (typeof updateChatLaunchPosition === 'function') updateChatLaunchPosition();
   }
@@ -3574,6 +3824,7 @@
     if (!isRidingBus && !bus) return; // can only board a tracked bus
     isRidingBus = !isRidingBus;
     busSheetRideToggle.classList.toggle('active', isRidingBus);
+    syncTrackingUI(); // riding: one recenter button
 
     if (isRidingBus) {
       ridingRoute = bus.route;
@@ -3811,11 +4062,12 @@
   function transferLegs(originC, destC) {
     const plan = transferPlan(originC, destC);
     if (!plan) return null;
-    const Tc = plan.first.route.pointAt(plan.first.toKm);
-    const passes = r => haversineKm(Tc, r.pointAt(r.kmAt(Tc))) < 0.5;
     const o = placeRelation(originC), d = placeRelation(destC);
-    const opts1 = o.lines.filter(passes).map(r => ({ route: r, fromKm: r.kmAt(originC), toKm: r.kmAt(Tc) }));
-    const opts2 = d.lines.filter(passes).map(r => ({ route: r, fromKm: r.kmAt(Tc), toKm: r.kmAt(destC) }));
+    // any service covering a leg: it serves that end and also passes the transfer point
+    const opts1 = o.lines.map(r => ({ route: r, fromKm: r.boardKmAt(originC), toKm: transferKmOn(r, plan.point) })).filter(x => x.toKm !== null && (x.toKm - x.fromKm) * plan.first.dir > 0);
+    const opts2 = d.lines.map(r => ({ route: r, fromKm: transferKmOn(r, plan.point), toKm: r.boardKmAt(destC) })).filter(x => x.fromKm !== null && (x.toKm - x.fromKm) * plan.second.dir > 0);
+    if (!opts1.length) opts1.push({ route: plan.first.route, fromKm: plan.first.fromKm, toKm: plan.first.toKm });
+    if (!opts2.length) opts2.push({ route: plan.second.route, fromKm: plan.second.fromKm, toKm: plan.second.toKm });
     return {
       transferAt: plan.at,
       legs: [
@@ -3946,7 +4198,7 @@
     return st ? st.name : describeRouteKm(route, km).town;
   }
   // "at San Fernando Terminal" / "in Urdaneta, Pangasinan"
-  const atPlace = name => (/(Terminal|Stopover|Office)$/.test(name) ? 'at ' : 'in ') + name;
+  const atPlace = name => (/(Terminal|Stopover|Office|exit|Stop)\b/i.test(name) ? 'at ' : 'in ') + name;
 
   function trackTrip(trip) {
     stopTracking();
@@ -4130,6 +4382,10 @@
   function renderBusOptions() {
     busOptionsList.innerHTML = '';
     document.getElementById('busOptionsTitle').textContent = 'Choose a bus';
+    if (onE1(originCoord)) {
+      busOptionsList.innerHTML = '<p style="text-align:center;color:var(--text-secondary);font-size:13px;padding:16px 4px;">' + escapeHtml(E1_NOTICE) + '</p>';
+      return;
+    }
     if (originCoord && destinationCoord && tripSkeleton(originCoord, destinationCoord)) { renderTripOptions(); return; }
     if (!originCoord) {
       busOptionsList.innerHTML = '<p style="text-align:center;color:var(--text-secondary);font-size:13px;padding:16px 4px;">Set your location first so I can find buses near you.</p>';
@@ -4225,7 +4481,7 @@
       if (!from) return null;
       routes = placeRelation(from).lines.filter(r => r.line === bus.route.line);
       if (!routes.includes(bus.route)) routes = [bus.route].concat(routes);
-      point = bus.route.pointAt(bus.route.kmAt(from));
+      point = bus.route.pointAt(bus.route.boardKmAt(from));
     }
     const route = routes.includes(bus.route) ? bus.route : routes[0];
     const km = route.kmAt(point);
@@ -4268,6 +4524,11 @@
     const from = fromCoord || (trackedTrip ? null : originCoord);
     const keepMode = boardState && boardState.mode;
     clearBoardingPoint();
+    if (onE1(from)) {
+      boardInfoEl.innerHTML = '<div class="board-note" style="padding:4px 0 8px">' + escapeHtml(E1_NOTICE) + '</div>';
+      boardInfoEl.classList.remove('hidden');
+      return;
+    }
     const plan = boardingPlan(from);
     if (keepMode) boardState = { mode: keepMode };
     if (!plan) {
@@ -4385,9 +4646,12 @@
     }
 
     if (isDesktop) {
-      // bottom-right corner, vertically centred on the Find My Bus button
-      const findBtnRect = findBusBtn.getBoundingClientRect();
-      const centerY = findBtnRect.top + findBtnRect.height / 2;
+      // bottom-right corner, level with the lowest visible card: Find My Bus, or the ETA card while
+      // tracking (a hidden element measures 0,0, which threw the button to the top of the screen)
+      // (looked up by id: this also runs at startup, before the etaCard constant exists)
+      const anchor = [findBusBtn, document.getElementById('etaCard'), bottomStack].find(el => el && el.getBoundingClientRect().height > 0) || bottomStack;
+      const findBtnRect = anchor === findBusBtn ? findBusBtn.getBoundingClientRect() : anchor.getBoundingClientRect();
+      const centerY = anchor === findBusBtn ? findBtnRect.top + findBtnRect.height / 2 : findBtnRect.bottom - 25;
       chatLaunchBtn.style.bottom = Math.max(16, window.innerHeight - centerY - 25) + 'px';
       chatLaunchBtn.style.right = DESKTOP_CHAT_RIGHT + 'px';
       if (navControl) navControl.style.marginBottom = '';
@@ -4903,6 +5167,21 @@
     return best ? best.l : null;
   }
   function describeRouteKm(route, km) {
+    if (route.exits.length && Math.abs(km - route.tabangKm) < 0.05) {
+      return { town: 'Guiguinto', province: 'Bulacan', road: 'NLEX (E1)', coord: route.pointAt(km), label: 'the Tabang bus stop, Guiguinto (NLEX)' };
+    }
+    const zone = route.zoneAt(km);
+    if (route.zones[1] && Math.abs(km - route.zones[1].from) < 0.06) { // the Dau terminal, just before SCTEX
+      return { town: 'Mabalacat', province: 'Pampanga', road: 'MacArthur Highway', coord: route.pointAt(km), label: 'MacArthur Highway in Mabalacat, Pampanga (near Dau Terminal)' };
+    }
+    if (zone && zone !== route.zones[0]) {
+      return { town: '', province: '', road: zone.road, coord: route.pointAt(km), label: zone.name };
+    }
+    if (route.onExpressway(km)) {
+      const x = route.exitAt(km);
+      return { town: x.town, province: x.province, road: 'NLEX (E1)', coord: route.pointAt(km),
+        label: 'NLEX near ' + x.town + ', ' + x.province };
+    }
     const idx = route.legIndexAt(Math.max(0, Math.min(route.totalKm - 1e-6, km)));
     // at the very end of a line, use the terminus town (its segment starts at the last anchor)
     const town = segmentFor(route.towns, km >= route.totalKm - 0.3 ? route.anchors.length - 1 : idx);
@@ -4916,7 +5195,7 @@
   }
   // How a place relates to one line: where you'd board/alight and how far off the road it is.
   function routeRelation(route, coord) {
-    const km = route.kmAt(coord);
+    const km = route.boardKmAt(coord);
     const point = describeRouteKm(route, km);
     const offKm = haversineKm(coord, point.coord);
     return {
@@ -4927,6 +5206,8 @@
     };
   }
   // The place's relation to its nearest line, plus every line that serves it.
+  function onE1(coord) { return !!coord && ROUTES.some(r => r.isOnE1(coord)); }
+  const E1_NOTICE = 'You’re on an expressway (NLEX, SCTEX or TPLEX). Buses can’t pick up passengers here — board at the Tabang bus stop (Guiguinto), the Dau terminal, or where the bus leaves the expressway.';
   function placeRelation(coord) {
     const rels = ROUTES.map(r => routeRelation(r, coord)).sort((a, b) => a.offRouteKm - b.offRouteKm);
     const best = rels[0];
@@ -4942,32 +5223,67 @@
   function transferPointBetween(ra, rb) {
     const key = ra.id + '|' + rb.id;
     if (transferCache.has(key)) return transferCache.get(key);
-    let k = 0;
-    while (k < ra.anchors.length && k < rb.anchors.length && ra.anchors[k][0] === rb.anchors[k][0] && ra.anchors[k][1] === rb.anchors[k][1]) k++;
-    const splitKm = ra.anchorKm(Math.max(0, k - 1));
+    // The stretch of road both services share: services from different Metro origins meet at Balintawak.
+    const k = a => a[0] + ',' + a[1];
+    const idxB = new Map(rb.anchors.map((a, i) => [k(a), i]));
+    let ia = -1, ib = -1, n = 0;
+    for (let i = 0; i < ra.anchors.length && ia < 0; i++) {
+      const j = idxB.get(k(ra.anchors[i]));
+      if (j === undefined) continue;
+      ia = i; ib = j;
+      while (i + n < ra.anchors.length && j + n < rb.anchors.length && k(ra.anchors[i + n]) === k(rb.anchors[j + n])) n++;
+    }
     let best = null;
-    // Only a real Victory Liner station that both services stop at (never a bare junction or an expressway):
-    // the last one before the routes split.
-    MAJOR_TERMINALS.forEach(t => {
-      if (t.type === 'booking' || !t.lines.includes(ra.id) || !t.lines.includes(rb.id)) return;
-      const km = ra.kmAt(t.coord);
-      if (km > splitKm + 0.3) return;
-      if (!best || km > best.km) best = { km, name: t.name };
-    });
-    if (!best) best = { km: 0, name: ra.ends[0] + ' Terminal' }; // every service starts at Pasay
+    if (ia >= 0) {
+      const startKm = ra.anchorKm(ia) - 0.3, splitKm = ra.anchorKm(ia + n - 1) + 0.3;
+      // a Victory Liner station both stop at, inside the shared stretch
+      MAJOR_TERMINALS.forEach(t => {
+        if (t.type === 'booking' || !t.lines.includes(ra.id) || !t.lines.includes(rb.id)) return;
+        const km = ra.kmAt(t.coord);
+        if (km < startKm || km > splitKm) return;
+        if (!best || km > best.km) best = { km, name: t.name, coord: t.coord };
+      });
+      // or the Tabang stop on NLEX, when both are Express services (the only stop on E1)
+      if (ra.tabangKm !== undefined && rb.tabangKm !== undefined && (!best || ra.tabangKm > best.km)) {
+        best = { km: ra.tabangKm, name: 'Tabang Bus Stop, Guiguinto', tabang: true, coord: ra.pointAt(ra.tabangKm) };
+      }
+    }
+    if (!best) best = { km: 0, name: ra.ends[0] + ' Terminal', coord: ra.pointAt(0) };
     transferCache.set(key, best);
     return best;
   }
+  // Where transfer point T is on route r.
+  function transferKmOn(r, T) {
+    if (T.tabang) return r.tabangKm !== undefined ? r.tabangKm : null;
+    const km = r.kmAt(T.coord);
+    return !r.onExpressway(km) && haversineKm(T.coord, r.pointAt(km)) < 0.6 ? km : null; // no changing buses on E1
+  }
+  // Tries every pair of services serving the two ends (Express and Inner Cities, any Metro origin) and keeps the
+  // shortest ride — so Iba → Dagupan changes in San Fernando, not by doubling back to Tabang.
+  const transferPlanCache = new Map();
   function transferPlan(originC, destC) {
+    const key = originC.map(v => v.toFixed(4)).join(',') + '>' + destC.map(v => v.toFixed(4)).join(',');
+    if (transferPlanCache.has(key)) return transferPlanCache.get(key);
     const o = placeRelation(originC), d = placeRelation(destC);
-    if (o.status === 'far_from_route' || d.status === 'far_from_route') return null;
-    if (o.lines.some(r => d.lines.includes(r))) return null; // one service covers both ends
-    const T = transferPointBetween(o.route, d.route);
-    return {
-      at: T.name,
-      first: { route: o.route, fromKm: o.routeKm, toKm: T.km, dir: T.km > o.routeKm ? 1 : -1 },
-      second: { route: d.route, fromKm: T.km, toKm: d.routeKm, dir: d.routeKm > T.km ? 1 : -1 }
-    };
+    let best = null;
+    if (o.status !== 'far_from_route' && d.status !== 'far_from_route' && !o.lines.some(r => d.lines.includes(r))) {
+      o.lines.forEach(ra => d.lines.forEach(rb => {
+        const T = transferPointBetween(ra, rb);
+        const tA = transferKmOn(ra, T), tB = transferKmOn(rb, T);
+        if (tA === null || tB === null) return;
+        const fromKm = ra.boardKmAt(originC), toKm = rb.boardKmAt(destC);
+        const ride = Math.abs(tA - fromKm) + Math.abs(toKm - tB);
+        if (!best || ride < best.ride) best = { ride, plan: {
+          at: T.name, point: T,
+          first: { route: ra, fromKm, toKm: tA, dir: tA > fromKm ? 1 : -1 },
+          second: { route: rb, fromKm: tB, toKm, dir: toKm > tB ? 1 : -1 }
+        } };
+      }));
+    }
+    const plan = best ? best.plan : null;
+    if (transferPlanCache.size > 200) transferPlanCache.clear();
+    transferPlanCache.set(key, plan);
+    return plan;
   }
 
   /* ---------- Time helpers ---------- */
@@ -5120,8 +5436,9 @@
      reference distances from Caloocan (Olongapo ≈130.6 km, Iba ≈202.0 km,
      Sta. Cruz ≈264.5 km), which match real driving distances. */
   const OBSERVED_FARES = [ // line = ROUTE_DEFS id; from/to = that line's anchor indexes
-    { line: 'zambales', from: METRO_N, to: METRO_N + 11, fare: 89, label: 'Caloocan → Tabang, Guiguinto', source: 'rider-reported, Sept 2026' },
-    { line: 'zambales', from: METRO_N, to: METRO_N + 54, fare: 379, label: 'Caloocan → Olongapo', source: 'Pamasahe.com 2026 listing (regular fare)' }
+    // Rate calibrated earlier on Caloocan → Tabang ₱89 (rider) and Caloocan → Olongapo ₱379 (listing), when routes used
+    // MacArthur Highway. On NLEX those trips are shorter; refitting on the new distances gives an unrealistic base fare,
+    // so the calibrated rate is kept (see FARE_MODEL below).
     // Checks, not fitted (same rate): Kamias → Tuguegarao ₱1,450 listing vs ₱1,453 here; Cubao → Baguio ₱740 (GMA) vs ~₱760.
     // Pangasinan Line checks (not fitted, same rate): Pasay → Dagupan ₱672–687 and Cubao → Alaminos / Bolinao
     // listings agree within ~3% once the Pasay/Cubao extra distance and the Camiling shortcut are included.
@@ -5130,26 +5447,8 @@
   const FARE_DISCOUNT = 0.20;        // students, senior citizens, PWDs — every day
   // Fit fare = intercept + perKm × road km through the observed fares (all lines share one rate).
   // With a single observation, keep LTFRB's per-km shape and fit only the level.
-  let FARE_MODEL = null;
-  function fareModel() {
-    if (FARE_MODEL) return FARE_MODEL;
-    const pts = OBSERVED_FARES.map(o => {
-      const r = ROUTE_BY_ID[o.line];
-      return [r.fareDistance(r.anchorKm(o.from), r.anchorKm(o.to)).km, o.fare];
-    });
-    let perKm, intercept;
-    if (pts.length >= 2) {
-      const n = pts.length, sx = pts.reduce((t, p) => t + p[0], 0), sy = pts.reduce((t, p) => t + p[1], 0);
-      const sxx = pts.reduce((t, p) => t + p[0] * p[0], 0), sxy = pts.reduce((t, p) => t + p[0] * p[1], 0);
-      perKm = (n * sxy - sx * sy) / (n * sxx - sx * sx);
-      intercept = (sy - perKm * sx) / n;
-    } else {
-      const scale = pts[0][1] / (12.25 + (pts[0][0] - 5) * 2.45);
-      perKm = 2.45 * scale; intercept = (12.25 - 5 * 2.45) * scale;
-    }
-    FARE_MODEL = { perKm, baseFare: intercept + FARE_BASE_KM * perKm };
-    return FARE_MODEL;
-  }
+  const FARE_MODEL = { baseFare: 14.62, perKm: 2.90 }; // current Victory Liner fares (calibration above)
+  function fareModel() { return FARE_MODEL; }
   function computeFare(route, fromRouteKm, toRouteKm) {
     const m = fareModel();
     const { km, via } = route.fareDistance(fromRouteKm, toRouteKm);
@@ -5219,6 +5518,7 @@
         if (!o.found) return { ok: false, reason: 'origin_not_found', query: origin, tell_user: "Couldn't find where they're starting from. Ask for a town or landmark." };
         startC = o.coord; startName = o.name;
       }
+      if (onE1(startC)) return { ok: false, reason: 'on_expressway', tell_user: E1_NOTICE };
       if (!startC) return { ok: false, reason: 'location_not_set', tell_user: 'Set your location first (allow location, or tap the pin in "Your location"), or say which town you are starting from.' };
       
       const destPlace = destination ? await resolvePlace(destination)
@@ -5289,14 +5589,14 @@
       const out = { ok: true, place: target.name, stop_on_route: rel.point.label, distance_from_route_km: rel.offRouteKm, lines: [] };
       if (rel.status === 'far_from_route') out.warning = 'This place is not on a BusHop line; times are for the nearest point on the ' + rel.route.name + '.';
       served.forEach(route => {
-        const km = route.kmAt(target.coord);
+        const km = route.boardKmAt(target.coord);
         const entry = { line: route.name + (served.filter(r => r.line === route.line).length > 1 ? ' (' + route.ends[1] + ' service)' : ''), stop_on_route: describeRouteKm(route, km).label };
         dirs.forEach(dir => {
           entry[dir === 1 ? 'northbound' : 'southbound'] = upcomingBuses([{ route, km, dir }], 2).map(b => b.info);
         });
         out.lines.push(entry);
       });
-      const first = upcomingBuses(served.map(route => ({ route, km: route.kmAt(target.coord), dir: dirs.length === 1 ? dirs[0] : 0 })), 1)[0];
+      const first = upcomingBuses(served.map(route => ({ route, km: route.boardKmAt(target.coord), dir: dirs.length === 1 ? dirs[0] : 0 })), 1)[0];
       if (first) actions.push({ type: 'track', busId: first.bus.id, label: 'Track ' + first.bus.plate });
       return out;
     },
@@ -5591,7 +5891,7 @@
         !t.lines.some(r => ROUTE_BY_ID[r].line !== id) && t.type !== 'stopover');
       s += '\n**' + line.name + '**\n' + list.map(t => '- **' + t.name + '**' + kind(t) + ' — ' + t.note).join('\n');
     });
-    return s + '\nShared by several lines: San Fernando, plus stopovers at Dau, Motorway (Tarlac), Pura, Sison and Aritao.';
+    return s + '\nShared by several lines: San Fernando (Inner Cities) and Dau (Express and Inner Cities), plus stopovers at Motorway (Tarlac), Pura, Sison and Aritao.';
   }
   const STATIC_FAQ = [
     {
@@ -5622,10 +5922,10 @@
   function localFareOverview() {
     const cal = matchLocalLandmark('Caloocan').coord;
     const section = (routeId, stops) => {
-      const route = ROUTE_BY_ID[routeId], from = route.kmAt(cal);
+      const route = ROUTE_BY_ID[routeId + '@caloocan'], from = route.boardKmAt(cal);
       return stops.map(q => {
         const p = matchLocalLandmark(q);
-        const f = computeFare(route, from, route.kmAt(p.coord));
+        const f = computeFare(route, from, route.boardKmAt(p.coord));
         return '- **' + q.replace(/ (City )?Terminal$/, '') + '**: ₱' + f.regular + ' (₱' + f.discounted + ' discounted)';
       }).join('\n');
     };
