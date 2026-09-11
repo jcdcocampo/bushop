@@ -2899,6 +2899,7 @@
   // unique anchor-to-anchor leg is fetched once and reused. Requests go one at a time, ~1/s, which is
   // the public OSRM demo server's usage policy.
   const snappedLegCache = new Map(); // "lng,lat>lng,lat" -> geometry
+  const spanResnapCache = new Map(); // rejected legs already re-traced (geometry, or null if still no good)
   const legKey = (a, b) => a[0] + ',' + a[1] + '>' + b[0] + ',' + b[1];
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   async function fetchSnappedLegs(route) {
@@ -2909,6 +2910,7 @@
     const legs = route.straightLegs();
     const source = legs.map(() => 'straight');
     const rejected = [];
+    const rejectedIdx = [];
     const missing = [];
     legs.forEach((g, i) => {
       const hit = snappedLegCache.get(legKey(ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1]));
@@ -2940,11 +2942,52 @@
         geom[0] = ROUTE_ANCHORS[i].slice(0, 2);
         geom[geom.length - 1] = ROUTE_ANCHORS[i + 1].slice(0, 2);
         const problem = legProblem(geom, ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1], ROUTE_ANCHORS[i + 1][2] === 'winding', relaxedLegs.has(i));
-        if (problem) { rejected.push('leg ' + i + ': ' + problem); return; }
+        if (problem) { rejected.push('leg ' + i + ': ' + problem); rejectedIdx.push(i); return; }
         legs[i] = geom; source[i] = 'road';
         snappedLegCache.set(legKey(ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1]), geom);
       });
       await sleep(1100);
+    }
+    // Second pass for rejected legs. Most rejections come from the waypoint itself: a flyover or one-way
+    // carriageway point (EDSA) or an approximate point makes the router loop through ramps and U-turns to hit it.
+    // Re-fetch a longer stretch WITHOUT those waypoints and cut out the part between the two anchors — only if
+    // the real road passes within 350 m of both, and the cut still passes the same checks. Otherwise stay straight.
+    const fixed = new Set();
+    for (const i of rejectedIdx) {
+      const A0 = ROUTE_ANCHORS[i].slice(0, 2), A1 = ROUTE_ANCHORS[i + 1].slice(0, 2);
+      const key = legKey(ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1]);
+      if (spanResnapCache.has(key)) {
+        const g = spanResnapCache.get(key);
+        if (g) { legs[i] = g; source[i] = 'road'; fixed.add(i); }
+        continue;
+      }
+      let geom = null;
+      try {
+        const s0 = Math.max(0, i - 2), e0 = Math.min(ROUTE_ANCHORS.length - 1, i + 3);
+        const osrmLegs = await osrmRouteChunk([ROUTE_ANCHORS[s0], ROUTE_ANCHORS[e0]], false);
+        const full = [];
+        osrmLegs.forEach(leg => leg.steps.forEach(step => step.geometry.coordinates.forEach(c => {
+          const prev = full[full.length - 1];
+          if (!prev || prev[0] !== c[0] || prev[1] !== c[1]) full.push(c);
+        })));
+        if (full.length > 1) {
+          const pa = nearestOnPolyline(A0, full), pb = nearestOnPolyline(A1, full);
+          if (pa.km <= 0.35 && pb.km <= 0.35 && pa.index <= pb.index) {
+            const cut = [A0, pa.point].concat(full.slice(pa.index, pb.index), [pb.point, A1]);
+            const problem = legProblem(cut, ROUTE_ANCHORS[i], ROUTE_ANCHORS[i + 1], ROUTE_ANCHORS[i + 1][2] === 'winding', relaxedLegs.has(i));
+            if (!problem) geom = cut;
+          }
+        }
+      } catch (err) { /* keep the straight leg */ }
+      spanResnapCache.set(key, geom);
+      if (geom) { legs[i] = geom; source[i] = 'road'; fixed.add(i); snappedLegCache.set(key, geom); }
+      await sleep(1100);
+    }
+    if (fixed.size) {
+      for (let k = rejected.length - 1; k >= 0; k--) {
+        if (fixed.has(Number(rejected[k].match(/^leg (\d+):/)[1]))) rejected.splice(k, 1);
+      }
+      console.log(route.id + ' snapping: re-traced ' + fixed.size + ' rejected leg(s) along the road without their waypoints.');
     }
     return { legs, source, rejected };
   }
