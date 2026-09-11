@@ -60,6 +60,14 @@
 
   .maplibregl-popup-content strong { display: block; font-size: 13px; color: var(--text-primary); }
   .maplibregl-popup-content span { font-size: 11px; color: var(--text-secondary); }
+  .popup-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .popup-track-btn, .popup-guide-btn {
+    border: none; border-radius: 10px; padding: 7px 10px;
+    font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;
+    white-space: nowrap;
+  }
+  .popup-track-btn { background: var(--accent); color: #fff; }
+  .popup-guide-btn { background: var(--dev-pill-bg); color: var(--text-primary); }
 
   .bus-marker {
     width: 30px; height: 30px; border-radius: 50%;
@@ -123,8 +131,8 @@
     top: max(16px, env(safe-area-inset-top));
     left: 50%;
     transform: translateX(-50%);
-    width: calc(100% - 32px);
-    max-width: 440px;
+    width: calc(100% - 48px);
+    max-width: 900px;
     z-index: 20;
     display: flex; align-items: center; justify-content: space-between;
   }
@@ -184,7 +192,7 @@
 
   /* ---------- WEATHER / TIME CAPSULE ---------- */
   .weather-capsule {
-    position: absolute; top: 74px; left: max(16px, calc(50% - 220px)); z-index: 19;
+    position: absolute; top: 74px; left: max(16px, calc(50% - 450px)); z-index: 19;
     background: var(--surface-translucent);
     backdrop-filter: blur(20px) saturate(1.6);
     -webkit-backdrop-filter: blur(20px) saturate(1.6);
@@ -233,6 +241,7 @@
   }
 
   .bottom-bar {
+    position: relative;
     background: var(--surface-translucent);
     backdrop-filter: blur(24px) saturate(1.7);
     -webkit-backdrop-filter: blur(24px) saturate(1.7);
@@ -261,6 +270,10 @@
     font-size: 14px; font-family: inherit; color: var(--text-primary); width: 100%;
   }
   .field input::placeholder { color: var(--text-secondary); }
+  .field-stack:focus-within,
+  .chat-input-row:focus-within {
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18);
+  }
 
   .pin-btn {
     background: none; border: none; padding: 4px; cursor: pointer;
@@ -340,7 +353,9 @@
 
   /* ---------- ETA CARD ---------- */
   .eta-card {
-    position: absolute; left: 16px; right: 16px; bottom: 96px; z-index: 18;
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 440px;
+    bottom: 96px; z-index: 18;
     background: var(--surface-translucent);
     backdrop-filter: blur(24px) saturate(1.7);
     -webkit-backdrop-filter: blur(24px) saturate(1.7);
@@ -504,13 +519,81 @@
     padding: 8px 18px 12px;
   }
 
+  /* ---------- BUS DETAIL SHEET (Grab-style slide-up card) ---------- */
+  .bus-sheet-overlay {
+    position: fixed; inset: 0; z-index: 38;
+    background: rgba(0, 0, 0, 0.25);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .bus-sheet-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .bus-sheet {
+    width: 100%; max-width: 440px;
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    box-shadow: var(--shadow-float);
+    padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .bus-sheet-overlay.open .bus-sheet { transform: translateY(0); }
+
+  .bus-sheet-handle {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: var(--dev-pill-bg); margin: 4px auto 14px;
+  }
+
+  .bus-sheet-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .bus-sheet-plate { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .bus-sheet-direction { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+  .bus-sheet-eta {
+    background: rgba(0, 122, 255, 0.08);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; align-items: center;
+    margin-bottom: 16px;
+  }
+  .bus-sheet-eta-value { font-size: 28px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
+  .bus-sheet-eta-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+  .bus-sheet-actions { display: flex; gap: 10px; }
+  .bus-sheet-actions .btn-primary,
+  .bus-sheet-actions .btn-secondary { flex: 1; padding: 13px; }
+  .bus-sheet-actions .btn-secondary { background: var(--dev-pill-bg); color: var(--text-primary); }
+
+  .bus-sheet-guide-info {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: rgba(118, 118, 128, 0.08);
+    border-radius: 14px;
+    font-size: 13px;
+    color: var(--text-primary);
+    text-align: center;
+  }
+
   /* ---------- ACCESSIBILITY BASELINE ---------- */
   button:focus-visible,
-  input:focus-visible,
   select:focus-visible,
   .autocomplete-item:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+  }
+  /* Text inputs inside pill containers get the softer :focus-within glow
+     defined near .field-stack instead of a hard rectangular outline. */
+  .field input:focus-visible,
+  .chat-input-row input:focus-visible {
+    outline: none;
+  }
+  /* Standalone inputs (dev controls, chat) still get a visible indicator. */
+  .dev-controls input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -620,8 +703,10 @@
         <div class="field">
           <span class="field-dot dest"></span>
           <input type="text" placeholder="Where to?" id="destinationInput" autocomplete="off" aria-label="Destination">
+          <button class="pin-btn" id="pinButtonDest" aria-label="Pin your destination on the map" type="button">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7-6.1-7-11.2C5 6 8.1 3 12 3s7 3 7 6.8C19 14.9 12 21 12 21z" stroke="#007AFF" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.3" stroke="#007AFF" stroke-width="1.7"/></svg>
+          </button>
         </div>
-        <div class="autocomplete-list hidden" id="autocompleteList"></div>
       </div>
       <button class="chat-launch" aria-label="Open BusBoy chat">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -631,8 +716,34 @@
           <circle cx="15.5" cy="12" r="1" fill="white"/>
         </svg>
       </button>
+      <div class="autocomplete-list hidden" id="autocompleteList"></div>
     </div>
   </div>
+  <!-- BUS DETAIL SHEET (opens on "Track this Bus") -->
+  <div class="bus-sheet-overlay" id="busSheetOverlay">
+    <div class="bus-sheet">
+      <div class="bus-sheet-handle"></div>
+      <div class="bus-sheet-header">
+        <div>
+          <div class="bus-sheet-plate" id="busSheetPlate">—</div>
+          <div class="bus-sheet-direction" id="busSheetDirection"></div>
+        </div>
+        <button class="chat-close" id="busSheetClose" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 5l14 14M19 5L5 19" stroke="#1D1D1F" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="bus-sheet-eta">
+        <span class="bus-sheet-eta-value" id="busSheetEtaValue">—</span>
+        <span class="bus-sheet-eta-label">Estimated arrival</span>
+      </div>
+      <div class="bus-sheet-actions">
+        <button class="btn-secondary" id="busSheetUntrack">Stop Tracking</button>
+        <button class="btn-primary" id="busSheetGuide">Take Me to This Bus</button>
+      </div>
+      <div class="bus-sheet-guide-info hidden" id="busSheetGuideInfo"></div>
+    </div>
+  </div>
+
   <!-- BUSBOY CHAT PANEL -->
   <div class="chat-overlay" id="chatOverlay">
     <div class="chat-sheet">
@@ -792,32 +903,55 @@
     { name: 'Subic', note: 'SBMA area', coord: [120.2400, 14.8781] },
     { name: 'Olongapo Terminal', note: 'Major hub', coord: [120.2827, 14.8294] },
     { name: 'Dinalupihan', note: 'Bataan, SCTEX junction', coord: [120.4694, 14.8762] },
+    { name: 'San Fernando Terminal', note: 'Pampanga', coord: [120.6900, 15.0286] },
     { name: 'Puregold Tabang, Guiguinto', note: 'Landmark near southern corridor', coord: [120.8790, 14.8600] },
-    { name: 'Caloocan Terminal', note: 'Manila-side boarding point', coord: [120.9836, 14.6531] },
+    { name: 'Caloocan Terminal', note: 'Southern terminus, Metro Manila', coord: [120.9836, 14.6531] },
     { name: 'Cubao Terminal', note: 'Manila-side boarding point', coord: [121.0538, 14.6197] },
     { name: 'Pasay Terminal', note: 'Manila-side boarding point', coord: [121.0011, 14.5453] },
     { name: 'Sampaloc Terminal', note: 'Manila-side boarding point', coord: [120.9910, 14.6060] },
     { name: 'PITX Terminal', note: 'Manila-side boarding point', coord: [120.9847, 14.5013] }
   ];
 
+  // The 5 major terminals to always mark distinctly on the map (per spec).
+  const MAJOR_TERMINALS = [
+    { name: 'Caloocan Terminal', note: 'Metro Manila — southern terminus', coord: [120.9836, 14.6531] },
+    { name: 'San Fernando Terminal', note: 'Pampanga', coord: [120.6900, 15.0286] },
+    { name: 'Olongapo Terminal', note: 'Major hub', coord: [120.2827, 14.8294] },
+    { name: 'Iba Terminal', note: 'Provincial capital', coord: [119.9780, 15.3297] },
+    { name: 'Sta. Cruz Terminal', note: 'Northern terminus', coord: [119.9040, 15.7700] }
+  ];
+
   /* =========================================================
      MAP
+     Route waypoints below are the major real towns/junctions on
+     the Zambales Line's "Inner Cities" path (Caloocan -> San
+     Fernando -> Dinalupihan -> Olongapo -> up the coast to Sta.
+     Cruz), kept deliberately few. Earlier versions used many more
+     fine-grained waypoints, which forced OSRM to detour through
+     every minor town center exactly, producing visible loops/
+     backtracking where those approximate coordinates weren't
+     precisely on the highway. Fewer, major-junction waypoints let
+     OSRM find the natural continuous highway route between them.
      ========================================================= */
   const ZAMBALES_ROUTE = [
-    [120.8823, 14.8524], [120.6500, 14.9200], [120.4694, 14.8762], [120.2827, 14.8294],
-    [120.2400, 14.8781], [120.1936, 14.9257], [120.1592, 15.0000], [120.1444, 15.0958],
-    [120.0850, 15.0500], [120.0500, 15.0900], [120.0200, 15.1300], [119.9600, 15.2800],
-    [119.9780, 15.3297], [119.9040, 15.4350], [119.8800, 15.5300], [119.9330, 15.5900],
-    [119.9040, 15.7700]
+    [120.9836, 14.6531], // Caloocan (southern terminus)
+    [120.8823, 14.8524], // Guiguinto, Bulacan
+    [120.6900, 15.0286], // San Fernando, Pampanga
+    [120.4694, 14.8762], // Dinalupihan, Bataan
+    [120.2827, 14.8294], // Olongapo City
+    [120.1444, 15.0958], // San Antonio, Zambales
+    [119.9600, 15.2800], // Botolan, Zambales
+    [119.9780, 15.3297], // Iba, Zambales
+    [119.9040, 15.7700]  // Sta. Cruz, Zambales (northern terminus)
   ];
   const CORRIDOR_BOUNDS = [[119.55, 14.30], [121.20, 16.00]];
 
   const map = new maplibregl.Map({
     container: 'map-canvas',
     style: 'https://tiles.openfreemap.org/styles/positron',
-    center: [120.15, 15.10],
-    zoom: 8.6,
-    minZoom: 8,
+    center: [120.35, 15.00],
+    zoom: 8.2,
+    minZoom: 7.5,
     maxZoom: 17,
     maxBounds: CORRIDOR_BOUNDS,
     attributionControl: { compact: true }
@@ -840,27 +974,29 @@
       paint: { 'line-color': '#007AFF', 'line-width': 4, 'line-opacity': 0.85 }
     });
 
-    new maplibregl.Marker({ element: makeTerminalEl() })
-      .setLngLat(ZAMBALES_ROUTE[0])
-      .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML('<strong>Manila-bound reference point</strong><span>Near Guiguinto, Bulacan</span>'))
-      .addTo(map);
-
-    new maplibregl.Marker({ element: makeTerminalEl() })
-      .setLngLat(ZAMBALES_ROUTE[ZAMBALES_ROUTE.length - 1])
-      .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML('<strong>Sta. Cruz Terminal</strong><span>Northern end of the line</span>'))
-      .addTo(map);
+    // Fix #1: mark all 5 major terminals distinctly, not just the endpoints.
+    MAJOR_TERMINALS.forEach(t => {
+      new maplibregl.Marker({ element: makeTerminalEl() })
+        .setLngLat(t.coord)
+        .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML('<strong>' + t.name + '</strong><span>' + t.note + '</span>'))
+        .addTo(map);
+    });
 
     createFleet();
   });
 
   map.on('click', (e) => {
     const devTapMode = devSwitch.classList.contains('on') && devLocationMode.value === 'tap';
-    if (devTapMode || manualPinArmed) {
+    if (devTapMode) {
       setOrigin([e.lngLat.lng, e.lngLat.lat], 'Custom pin');
-      if (manualPinArmed && !devTapMode) {
-        manualPinArmed = false;
-        mapHint.classList.add('hidden');
-      }
+      return;
+    }
+    if (manualPinTarget) {
+      const coord = [e.lngLat.lng, e.lngLat.lat];
+      if (manualPinTarget === 'origin') setOrigin(coord, 'Locating…', true);
+      else setDestination(coord, 'Locating…', true);
+      manualPinTarget = null;
+      mapHint.classList.add('hidden');
     }
   });
 
@@ -945,7 +1081,9 @@
      ========================================================= */
   async function fetchSnappedRoute(waypoints) {
     const coordStr = waypoints.map(c => c[0] + ',' + c[1]).join(';');
-    const url = 'https://router.project-osrm.org/route/v1/driving/' + coordStr + '?overview=full&geometries=geojson';
+    const radiusStr = waypoints.map(() => '2000').join(';'); // 2km snap tolerance per point
+    const url = 'https://router.project-osrm.org/route/v1/driving/' + coordStr +
+      '?overview=full&geometries=geojson&radiuses=' + radiusStr;
     const res = await fetch(url);
     const data = await res.json();
     if (data.code === 'Ok' && data.routes && data.routes[0]) {
@@ -1029,13 +1167,37 @@
       const distanceKm = direction === 1 ? startFrac * totalRouteKm : totalRouteKm - startFrac * totalRouteKm;
       const plate = generatePlate(i);
       const marker = new maplibregl.Marker({ element: makeBusEl() }).setLngLat(pointAtDistance(distanceKm)).addTo(map);
-      marker.setPopup(new maplibregl.Popup({ offset: 18 }).setHTML(
-        '<strong>' + plate + '</strong><span>' + (direction === 1 ? 'Northbound' : 'Southbound') + '</span>'
-      ));
-      fleet.push({ plate, direction, distanceKm, baseSpeed: 42 + Math.random() * 8, incidentTicks: 0, marker });
+      const popup = new maplibregl.Popup({ offset: 18 }).setHTML(
+        '<strong>' + plate + '</strong><span>' + (direction === 1 ? 'Northbound' : 'Southbound') + '</span>' +
+        '<div class="popup-actions">' +
+        '<button class="popup-track-btn" data-bus-id="' + i + '">Track this Bus</button>' +
+        '<button class="popup-guide-btn" data-bus-id="' + i + '">Take Me to This Bus</button>' +
+        '</div>'
+      );
+      marker.setPopup(popup);
+      fleet.push({ id: i, plate, direction, distanceKm, baseSpeed: 42 + Math.random() * 8, incidentTicks: 0, marker });
     }
     currentBucket = bucket;
+    // A regenerated fleet invalidates any bus that was being tracked/guided.
+    trackedBusId = null;
+    clearGuideRoute();
+    busSheetOverlay.classList.remove('open');
   }
+
+  // Delegated click handling for the Track/Guide buttons inside bus popups —
+  // popup content is re-created by MapLibre each time it opens, so a single
+  // document-level listener is more reliable than binding per-popup.
+  document.addEventListener('click', (e) => {
+    const trackBtn = e.target.closest('.popup-track-btn');
+    const guideBtn = e.target.closest('.popup-guide-btn');
+    if (trackBtn) {
+      const bus = fleet.find(b => b.id === Number(trackBtn.dataset.busId));
+      if (bus) openBusSheet(bus);
+    } else if (guideBtn) {
+      const bus = fleet.find(b => b.id === Number(guideBtn.dataset.busId));
+      if (bus) { openBusSheet(bus); guideToBus(bus); }
+    }
+  });
 
   function maybeRegenerateFleet() {
     const bucket = bucketForHour(getEffectiveHour());
@@ -1063,6 +1225,7 @@
     });
 
     updateNearestBusETA(multiplier);
+    if (trackedBusId !== null) updateBusSheetLive(multiplier);
   }
 
   setInterval(tick, 1000);
@@ -1086,6 +1249,11 @@
       if (gap < bestGap) { bestGap = gap; best = bus; }
     });
 
+    nearestApproachingBus = best;
+    nearestApproachingGap = bestGap;
+
+    if (trackedBusId !== null) return; // sheet/card is showing the tracked bus instead
+
     if (!best) {
       etaValueEl.textContent = 'No bus approaching';
       etaPlateEl.textContent = '';
@@ -1100,6 +1268,125 @@
   }
 
   /* =========================================================
+     BUS DETAIL SHEET — Fix #6/#10: "Track this Bus" now opens a
+     Grab-style slide-up card instead of just updating the small
+     eta-card in place, and adds a "Take Me to This Bus" guide
+     action alongside tracking.
+     ========================================================= */
+  let trackedBusId = null;
+  let nearestApproachingBus = null;
+  let nearestApproachingGap = Infinity;
+  let guideRouteActive = false;
+
+  const busSheetOverlay = document.getElementById('busSheetOverlay');
+  const busSheetPlate = document.getElementById('busSheetPlate');
+  const busSheetDirection = document.getElementById('busSheetDirection');
+  const busSheetEtaValue = document.getElementById('busSheetEtaValue');
+  const busSheetGuideInfo = document.getElementById('busSheetGuideInfo');
+
+  function openBusSheet(bus) {
+    trackedBusId = bus.id;
+    busSheetPlate.textContent = bus.plate;
+    busSheetDirection.textContent = (bus.direction === 1 ? 'Northbound' : 'Southbound');
+    busSheetEtaValue.textContent = originCoord ? 'Calculating…' : 'Set your location for an ETA';
+    busSheetGuideInfo.classList.add('hidden');
+    busSheetOverlay.classList.add('open');
+  }
+
+  function updateBusSheetLive(multiplier) {
+    const bus = fleet.find(b => b.id === trackedBusId);
+    if (!bus) { closeBusSheet(); return; } // fleet regenerated, bus no longer exists
+    busSheetDirection.textContent = (bus.direction === 1 ? 'Northbound' : 'Southbound');
+    etaLabel.textContent = 'Tracking · ' + bus.plate;
+    etaPlateEl.textContent = 'Plate ' + bus.plate;
+    if (!originCoord) {
+      busSheetEtaValue.textContent = 'Set your location for an ETA';
+      etaValueEl.textContent = 'Tracking';
+      return;
+    }
+    const originDist = distanceAlongRouteForCoord(originCoord);
+    const gap = Math.abs(originDist - bus.distanceKm);
+    const effectiveSpeed = Math.max(bus.baseSpeed * multiplier, 5);
+    const etaMinutes = Math.max(1, Math.round((gap / effectiveSpeed) * 60));
+    busSheetEtaValue.textContent = etaMinutes + ' min away';
+    etaValueEl.textContent = etaMinutes + ' min away';
+  }
+
+  function closeBusSheet() {
+    trackedBusId = null;
+    busSheetOverlay.classList.remove('open');
+    clearGuideRoute();
+  }
+
+  document.getElementById('busSheetClose').addEventListener('click', closeBusSheet);
+  document.getElementById('busSheetUntrack').addEventListener('click', closeBusSheet);
+
+  // Small eta-card's own Track button: tracks whichever bus is
+  // currently computed as nearest-approaching.
+  document.querySelector('.eta-card .track-btn').addEventListener('click', () => {
+    if (trackedBusId !== null) { closeBusSheet(); return; }
+    if (nearestApproachingBus) openBusSheet(nearestApproachingBus);
+  });
+
+  /* =========================================================
+     "TAKE ME TO THIS BUS" — walking directions to the bus's
+     current position via OSRM (same free demo server as the
+     route snapping), drawn as a dashed guide line.
+     ========================================================= */
+  function clearGuideRoute() {
+    guideRouteActive = false;
+    if (map.getLayer('guide-route-line')) map.removeLayer('guide-route-line');
+    if (map.getSource('guide-route')) map.removeSource('guide-route');
+  }
+
+  async function guideToBus(bus) {
+    if (!originCoord) {
+      busSheetGuideInfo.textContent = 'Set your location first so I can guide you there.';
+      busSheetGuideInfo.classList.remove('hidden');
+      return;
+    }
+    busSheetGuideInfo.textContent = 'Finding the way…';
+    busSheetGuideInfo.classList.remove('hidden');
+    try {
+      const busCoord = bus.marker.getLngLat();
+      const coordStr = originCoord[0] + ',' + originCoord[1] + ';' + busCoord.lng + ',' + busCoord.lat;
+      const url = 'https://router.project-osrm.org/route/v1/foot/' + coordStr + '?overview=full&geometries=geojson';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.code !== 'Ok' || !data.routes || !data.routes[0]) throw new Error(data.code);
+
+      const route = data.routes[0];
+      clearGuideRoute();
+      map.addSource('guide-route', {
+        type: 'geojson',
+        data: { type: 'Feature', geometry: route.geometry }
+      });
+      map.addLayer({
+        id: 'guide-route-line', type: 'line', source: 'guide-route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#8E8E93', 'line-width': 4, 'line-dasharray': [1, 1.6] }
+      });
+      guideRouteActive = true;
+
+      const km = (route.distance / 1000).toFixed(1);
+      const mins = Math.round(route.duration / 60);
+      busSheetGuideInfo.textContent = 'About ' + km + ' km, ~' + mins + ' min on foot to reach this bus.';
+
+      const bounds = new maplibregl.LngLatBounds(originCoord, originCoord);
+      bounds.extend([busCoord.lng, busCoord.lat]);
+      map.fitBounds(bounds, { padding: 80, maxZoom: 14 });
+    } catch (err) {
+      console.warn('Guide routing failed.', err);
+      busSheetGuideInfo.textContent = "Couldn't find walking directions right now — try again in a moment.";
+    }
+  }
+
+  document.getElementById('busSheetGuide').addEventListener('click', () => {
+    const bus = fleet.find(b => b.id === trackedBusId);
+    if (bus) guideToBus(bus);
+  });
+
+  /* =========================================================
      ORIGIN / DESTINATION STATE
      ========================================================= */
   const locationInput = document.getElementById('locationInput');
@@ -1109,7 +1396,7 @@
   const etaValueEl = document.getElementById('etaValue');
   const etaPlateEl = document.getElementById('etaPlate');
 
-  function setOrigin(coord, label) {
+  function setOrigin(coord, label, needsReverseGeocode) {
     originCoord = coord;
     locationInput.value = label;
     if (originMarker) originMarker.remove();
@@ -1118,15 +1405,47 @@
     fitToMarkers();
     map.flyTo({ center: coord, zoom: Math.max(map.getZoom(), 11) });
     if (!devSwitch.classList.contains('on')) fetchLiveWeather(coord);
+    if (needsReverseGeocode) {
+      reverseGeocode(coord).then(name => {
+        if (locationInput.value === 'Locating…') locationInput.value = name;
+      });
+    }
   }
 
-  function setDestination(coord, name) {
+  function setDestination(coord, name, needsReverseGeocode) {
     destinationCoord = coord;
     destinationInput.value = name;
     if (destinationMarker) destinationMarker.remove();
     destinationMarker = new maplibregl.Marker({ element: makeDestEl() }).setLngLat(coord).addTo(map);
     etaLabel.textContent = 'Nearest bus · to ' + name;
     fitToMarkers();
+    if (needsReverseGeocode) {
+      reverseGeocode(coord).then(label => {
+        if (destinationInput.value === 'Locating…') {
+          destinationInput.value = label;
+          etaLabel.textContent = 'Nearest bus · to ' + label;
+        }
+      });
+    }
+  }
+
+  // Fix #7: name a manually-pinned point via free reverse geocoding
+  // (Nominatim/OpenStreetMap, no API key) instead of "Custom pin".
+  async function reverseGeocode(coord) {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + coord[1] + '&lon=' + coord[0] + '&zoom=14';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.address) {
+        const a = data.address;
+        return a.suburb || a.village || a.town || a.city_district || a.city || a.county ||
+          (data.display_name ? data.display_name.split(',')[0] : 'Pinned location');
+      }
+      return 'Pinned location';
+    } catch (err) {
+      console.warn('Reverse geocoding failed, using generic label.', err);
+      return 'Pinned location';
+    }
   }
 
   function fitToMarkers() {
@@ -1173,16 +1492,19 @@
   });
 
   /* =========================================================
-     MANUAL PIN — available any time, not just in Dev Mode
+     MANUAL PIN — available any time, not just in Dev Mode.
+     Fix #4: works for both the location and destination fields.
      ========================================================= */
-  let manualPinArmed = false;
+  let manualPinTarget = null; // null | 'origin' | 'destination'
 
-  function armManualPin() {
-    manualPinArmed = true;
+  function armManualPin(target) {
+    manualPinTarget = target;
+    mapHint.textContent = target === 'origin' ? 'Tap the map to set your location' : 'Tap the map to set your destination';
     mapHint.classList.remove('hidden');
   }
 
-  document.getElementById('pinButton').addEventListener('click', armManualPin);
+  document.getElementById('pinButton').addEventListener('click', () => armManualPin('origin'));
+  document.getElementById('pinButtonDest').addEventListener('click', () => armManualPin('destination'));
 
   /* =========================================================
      AUTOCOMPLETE — shared between location + destination fields.
