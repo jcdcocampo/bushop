@@ -864,6 +864,49 @@
   .bus-option-plate { font-size: 15px; font-weight: 600; margin-top: 2px; }
   .bus-option-eta { font-size: 16px; font-weight: 700; color: var(--accent); }
 
+  /* Tall content (trip timeline + directions + Dev ride button) scrolls inside the sheet on small phones */
+  .bus-sheet, .bus-options-sheet { max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); overflow-y: auto; overscroll-behavior: contain; }
+
+  /* ---------- Trips with transfers ---------- */
+  .trip-option-card {
+    display: block; width: 100%; text-align: left; border: none; font-family: inherit; cursor: pointer;
+    background: rgba(118, 118, 128, 0.08); border-radius: 14px; padding: 12px 14px; color: var(--text-primary);
+  }
+  .trip-option-card:active { background: rgba(0, 122, 255, 0.1); }
+  .trip-option-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .trip-option-total { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .trip-leg-row { font-size: 13px; line-height: 1.45; display: flex; align-items: baseline; gap: 6px; }
+  .trip-leg-num {
+    flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; transform: translateY(2px);
+  }
+  .trip-transfer-row { font-size: 12px; color: var(--text-secondary); margin: 2px 0 2px 22px; }
+  .trip-option-foot { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+
+  .trip-panel { margin: -4px 0 14px; }
+  .trip-step { display: flex; gap: 10px; padding: 8px 10px; border-radius: 12px; cursor: pointer; }
+  .trip-step:hover { background: rgba(118, 118, 128, 0.06); }
+  .trip-step.active { background: rgba(0, 122, 255, 0.07); }
+  .trip-step.done { opacity: 0.5; }
+  .trip-step-body { flex: 1; min-width: 0; }
+  .trip-step-title { font-size: 14px; font-weight: 600; }
+  .trip-step-sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+  .trip-step-when { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .trip-change { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); padding: 2px 10px 2px 36px; }
+  .trip-change::before { content: "⇄"; font-size: 13px; color: var(--text-primary); }
+  .trip-summary { font-size: 12px; color: var(--text-secondary); padding: 6px 10px 0; }
+  .trip-note { font-size: 12px; color: #B25000; padding: 4px 10px 0; }
+  .bus-marker[data-leg]::before {
+    content: attr(data-leg); position: absolute; top: -7px; right: -7px; width: 17px; height: 17px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center;
+    box-shadow: 0 0 0 2px #fff; z-index: 1;
+  }
+  .transfer-marker {
+    width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2.5px solid var(--accent);
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--accent);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+
   .cancel-pill {
     display: block;
     margin: 4px auto 0;
@@ -1139,7 +1182,7 @@
   <div class="bus-options-overlay" id="busOptionsOverlay">
     <div class="bus-options-sheet">
       <div class="bus-sheet-handle"></div>
-      <div class="bus-options-title">Choose a bus</div>
+      <div class="bus-options-title" id="busOptionsTitle">Choose a bus</div>
       <div class="bus-options-list" id="busOptionsList"></div>
       <button class="cancel-pill" id="busOptionsCancel" type="button">Cancel</button>
     </div>
@@ -1165,7 +1208,7 @@
   <!-- ARRIVAL CELEBRATION (Dev Mode "I'm Riding This Bus") -->
   <div class="arrival-overlay" id="arrivalOverlay" role="dialog" aria-modal="true" aria-labelledby="arrivalTitle">
     <div class="arrival-card">
-      <div class="arrival-emoji" aria-hidden="true">🎉</div>
+      <div class="arrival-emoji" id="arrivalEmoji" aria-hidden="true">🎉</div>
       <p class="arrival-title" id="arrivalTitle">You've arrived!</p>
       <p class="arrival-place" id="arrivalPlace">Welcome to your destination.</p>
       <div class="arrival-stats" id="arrivalStats"></div>
@@ -1188,6 +1231,8 @@
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="#1D1D1F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
+      <!-- Multi-bus trip timeline (only while tracking a trip with transfers) -->
+      <div class="trip-panel hidden" id="tripPanel"></div>
       <div class="bus-sheet-eta">
         <span class="bus-sheet-eta-value" id="busSheetEtaValue">—</span>
         <span class="bus-sheet-eta-label" id="busSheetEtaLabel">Estimated arrival</span>
@@ -2440,7 +2485,8 @@
     const bucket = bucketForHour(getEffectiveHour());
     const count = busCounts[bucket];
 
-    const keep = b => b.idx < count || b.id === trackedBusId;
+    const tripIds = new Set(trackedTrip ? trackedTrip.legs.map(l => l.busId) : []);
+    const keep = b => b.idx < count || b.id === trackedBusId || tripIds.has(b.id); // never pull a bus you're tracking
     fleet.filter(b => !keep(b)).forEach(b => b.marker.remove());
     fleet = fleet.filter(keep);
 
@@ -2528,7 +2574,8 @@
 
   function maybeRegenerateFleet() {
     const bucket = bucketForHour(getEffectiveHour());
-    const hasRetiredBus = fleet.some(b => b.idx >= busCounts[bucket] && b.id !== trackedBusId);
+    const tripIds = new Set(trackedTrip ? trackedTrip.legs.map(l => l.busId) : []);
+    const hasRetiredBus = fleet.some(b => b.idx >= busCounts[bucket] && b.id !== trackedBusId && !tripIds.has(b.id));
     if (bucket !== currentBucket || hasRetiredBus) createFleet();
   }
 
@@ -2541,6 +2588,7 @@
     const trackedBus = trackedBusId !== null ? fleet.find(b => b.id === trackedBusId) : null;
     if (trackedBus && isRidingBus) updateRide(trackedBus);
     else if (trackedBus && guideRouteActive) updateGuideLine(trackedBus);
+    if (trackedTrip) { checkTripBoarding(); if (trackedTrip) drawTripPath(); }
     const multiplier = getSpeedMultiplier();
     updateNearestBusETA(multiplier);
     if (trackedBusId !== null) updateBusSheetLive(multiplier);
@@ -2574,8 +2622,22 @@
     return out;
   }
 
+  let nearestTripOption = null; // best two-bus trip for the current origin → destination, if one is needed
   function updateNearestBusETA(multiplier) {
     if (!originCoord) return;
+    nearestTripOption = null;
+    if (destinationCoord && transferLegs(originCoord, destinationCoord)) {
+      const opts = pickTripOptions(planTransferTrips(originCoord, destinationCoord, destinationInput.value, multiplier));
+      nearestTripOption = opts.length ? opts[0].trip : null;
+      nearestApproachingBus = null;
+      if (trackedBusId !== null) return;
+      if (!nearestTripOption) { etaValueEl.textContent = 'No connection right now'; etaPlateEl.textContent = ''; return; }
+      const tr = nearestTripOption;
+      etaLabel.textContent = '2 buses · change in ' + tr.transferAt + ' · for ' + destinationInput.value;
+      etaValueEl.textContent = 'Bus 1 in ' + formatDuration(Math.max(1, Math.round(tr.leaveMin)));
+      etaPlateEl.textContent = tr.legs.map(l => busById(l.busId).plate + ' (' + l.route.name.replace(' Line', '') + ')').join(' → ') + ' · arrive ' + clockIn(tr.totalMin);
+      return;
+    }
     const candidates = approachingBusesForTrip(originCoord, destinationCoord, multiplier);
     const bestC = candidates.sort((a, b) => a.etaMinutes - b.etaMinutes || a.gap - b.gap)[0] || null;
     nearestApproachingBus = bestC ? bestC.bus : null;
@@ -2614,11 +2676,15 @@
   const busSheetEtaValue = document.getElementById('busSheetEtaValue');
   const busSheetGuideInfo = document.getElementById('busSheetGuideInfo');
 
+  // Highlight the tracked bus — or every bus of a tracked trip, numbered by leg.
   function setTrackedMarkerVisual(busId) {
+    const legOf = new Map();
+    if (trackedTrip) trackedTrip.legs.forEach((l, i) => legOf.set(l.busId, i + 1));
     fleet.forEach(b => {
       const el = b.marker.getElement();
-      if (b.id === busId) el.classList.add('tracked');
-      else el.classList.remove('tracked');
+      const on = b.id === busId || legOf.has(b.id);
+      el.classList.toggle('tracked', on);
+      if (legOf.has(b.id)) el.dataset.leg = legOf.get(b.id); else delete el.dataset.leg;
     });
   }
 
@@ -2645,6 +2711,7 @@
 
   function openBusSheet(bus, opts) {
     opts = opts || {};
+    if (!opts.keepTrip && trackedTrip) clearTripState(); // tracking a single bus instead of the trip
     const isNewBus = trackedBusId !== bus.id;
     trackedBusId = bus.id;
     busSheetPlate.textContent = bus.plate;
@@ -2659,11 +2726,12 @@
     if (opts.expandDirections) expandDirections();
     setTrackedMarkerVisual(bus.id);
     updateRideToggleVisibility();
-    ecTrackBtn.textContent = '▲ View Tracked Bus';
-    busSheetOverlay.classList.add('open');
+    ecTrackBtn.textContent = trackedTrip ? '▲ View Trip' : '▲ View Tracked Bus';
+    if (!opts.keepClosed) busSheetOverlay.classList.add('open');
   }
 
   function updateBusSheetLive(multiplier) {
+    if (trackedTrip) { updateTripSheet(multiplier); return; }
     const bus = fleet.find(b => b.id === trackedBusId);
     if (!bus) { stopTracking(); return; } // fleet regenerated, bus no longer exists
     busSheetDirection.textContent = bus.route.name + ' · ' + bus.route.dirText(bus.direction);
@@ -2693,6 +2761,35 @@
     etaValueEl.textContent = etaMinutes + ' min away';
   }
 
+  // Sheet + ETA card while tracking a multi-bus trip.
+  function updateTripSheet(multiplier) {
+    const trip = trackedTrip;
+    updateTripLive(multiplier);
+    if (!trackedTrip) return;
+    const t = tripTimeline(trip, multiplier), cur = t[trip.activeLeg], bus = cur.bus;
+    busSheetPlate.textContent = 'Trip to ' + trip.destName;
+    busSheetDirection.textContent = trip.legs.length + ' buses · change in ' + trip.transferAt;
+    const legNo = 'Bus ' + (trip.activeLeg + 1) + ' of ' + trip.legs.length;
+    let value, label;
+    if (isRidingBus) {
+      const minsLeft = rideStats ? (rideStats.arrivalSimMs - nowMs()) / 60000 : cur.rideMin;
+      value = minsLeft < 1 ? 'Arriving now' : formatDuration(Math.round(minsLeft)) + ' to go';
+      label = legNo + ' · riding ' + (bus ? bus.plate : '') + ' to ' + (cur.leg.toName || trip.destName);
+    } else if (trip.waitingSimMs) {
+      const m = (trip.waitingSimMs - nowMs()) / 60000;
+      value = m < 1 ? 'Arriving now' : formatDuration(Math.round(m)) + ' away';
+      label = legNo + ' · waiting for ' + (bus ? bus.plate : '') + ' in ' + trip.transferAt;
+    } else {
+      value = isFinite(cur.boardMin) ? (cur.boardMin < 1 ? 'Arriving now' : formatDuration(Math.round(cur.boardMin)) + ' away') : 'No bus yet';
+      label = legNo + ' · ' + (bus ? bus.plate : '') + ' · ' + cur.leg.route.name;
+    }
+    busSheetEtaValue.textContent = value;
+    busSheetEtaLabel.textContent = label;
+    etaLabel.textContent = 'Trip · ' + legNo + ' · via ' + trip.transferAt;
+    etaValueEl.textContent = value;
+    etaPlateEl.textContent = trip.legs.map(l => { const b = busById(l.busId); return b ? b.plate : '—'; }).join(' → ');
+  }
+
   // Minimize: hides the big sheet only. Tracking (and the compact
   // eta-card countdown) keeps running in the background. Fix #2: the
   // eta-card's button becomes an explicit "pull back up" affordance
@@ -2707,9 +2804,10 @@
     trackedBusId = null;
     busSheetOverlay.classList.remove('open');
     clearGuideRoute();
+    if (isRidingBus) toggleRiding();
+    clearTripState();
     setTrackedMarkerVisual(null);
     ecTrackBtn.textContent = 'Track this Bus';
-    if (isRidingBus) toggleRiding();
   }
 
   document.getElementById('busSheetClose').addEventListener('click', minimizeBusSheet);
@@ -2744,6 +2842,8 @@
   // Small eta-card's own Track button: reopens the sheet for whichever
   // bus is tracked, or starts tracking the nearest-approaching bus.
   document.querySelector('.eta-card .track-btn').addEventListener('click', () => {
+    if (trackedTrip) { busSheetOverlay.classList.add('open'); return; }
+    if (trackedBusId === null && nearestTripOption) { trackTrip(nearestTripOption); return; }
     const bus = trackedBusId !== null ? fleet.find(b => b.id === trackedBusId) : nearestApproachingBus;
     if (bus) openBusSheet(bus);
   });
@@ -2765,6 +2865,7 @@
   }
 
   function drawMyTripLine() {
+    if (trackedTrip) { drawTripPath(); return; }
     const bus = fleet.find(b => b.id === trackedBusId);
     const route = bus ? bus.route : (originCoord ? tripRouteOptions(originCoord, destinationCoord)[0].route : ROUTES[0]);
     // While riding, "my trip" is what's left of it: from the bus onward.
@@ -2788,6 +2889,27 @@
     }
   }
 
+  // The rest of a multi-bus trip in blue: the current leg from where you are (or the bus, if
+  // you're on it) plus every later leg.
+  function drawTripPath() {
+    const trip = trackedTrip;
+    const lines = trip.legs.map((leg, i) => {
+      if (i < trip.activeLeg) return null;
+      let from = leg.fromKm;
+      const bus = busById(leg.busId);
+      if (i === trip.activeLeg && isRidingBus && bus) from = bus.distanceKm;
+      return sliceRouteCoords(leg.route, Math.min(from, leg.toKm), Math.max(from, leg.toKm));
+    }).filter(Boolean);
+    const data = { type: 'Feature', geometry: { type: 'MultiLineString', coordinates: lines } };
+    if (map.getSource('my-trip-route')) {
+      map.getSource('my-trip-route').setData(data);
+    } else {
+      map.addSource('my-trip-route', { type: 'geojson', data });
+      map.addLayer({ id: 'my-trip-route-line', type: 'line', source: 'my-trip-route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#007AFF', 'line-width': 5, 'line-opacity': 0.85 } });
+    }
+  }
+
   // Rider pin sits on the bus's top-right edge so both pins stay visible
   // but read as one unit ("I'm on this bus").
   const RIDING_PIN_OFFSET = [15, -15];
@@ -2804,13 +2926,15 @@
   // getBusPosition), so this is solved exactly instead of watching ticks —
   // arrival can't be skipped by fast-forwarding, jumping the Time field,
   // or a background tab pausing timers.
-  function nextPassTimeMs(bus, targetKm, fromMs) {
+  function nextPassTimeMs(bus, targetKm, fromMs, dir) {
     const totalRouteKm = bus.route.totalKm;
     const P = (2 * totalRouteKm) / bus.baseSpeed; // round trip, hours
     const half = P / 2;
     const u = ((fromMs / 3600000 + bus.phaseFraction * P) % P + P) % P;
     const x = Math.max(0, Math.min(totalRouteKm, targetKm));
-    const passes = [(x / totalRouteKm) * half, half + ((totalRouteKm - x) / totalRouteKm) * half];
+    // passes[0] = going away from Caloocan (dir 1), passes[1] = coming back (dir -1)
+    const passes = [(x / totalRouteKm) * half, half + ((totalRouteKm - x) / totalRouteKm) * half]
+      .filter((p, i) => !dir || (dir === 1 ? i === 0 : i === 1));
     let wait = Infinity;
     passes.forEach(p => {
       let d = ((p - u) % P + P) % P;
@@ -2821,6 +2945,10 @@
   }
 
   function computeRideTarget(bus) {
+    if (trackedTrip) {
+      const leg = trackedTrip.legs[trackedTrip.activeLeg];
+      return { km: leg.toKm, name: leg.toName || trackedTrip.destName };
+    }
     if (destinationCoord) return { km: bus.route.kmAt(destinationCoord), name: destinationInput.value };
     const out = bus.direction === 1;
     return { km: out ? bus.route.totalKm : 0, name: out ? bus.route.ends[1] : bus.route.ends[0] };
@@ -2846,13 +2974,21 @@
   }
 
   function arriveAtDestination(bus) {
+    if (trackedTrip && trackedTrip.activeLeg < trackedTrip.legs.length - 1) { arriveAtTransfer(bus); return; }
+    const trip = trackedTrip;
     const target = rideTarget;
     const stats = rideStats;
     // Exact figures from the solved arrival time (the bus moves at a constant
     // baseSpeed along the route), not from however the ticks happened to land.
     const rideHours = Math.max(0, stats.arrivalSimMs - stats.startSimMs) / 3600000;
-    const km = rideHours * stats.baseSpeed;
-    const minutes = Math.max(1, Math.round(rideHours * 60));
+    let km = rideHours * stats.baseSpeed;
+    let minutes = Math.max(1, Math.round(rideHours * 60));
+    let plateText = stats.plate;
+    if (trip && trip.boardedSimMs !== null) { // whole trip: from boarding bus 1, transfers included
+      km += trip.riddenKm;
+      minutes = Math.max(1, Math.round((stats.arrivalSimMs - trip.boardedSimMs) / 60000));
+      plateText = trip.legs.map(l => { const b = busById(l.busId); return b ? b.plate : ''; }).join(' + ');
+    }
     stopTracking(); // ends the ride and closes the bus sheet: you've gotten off
     // Put you exactly at your stop (the bus may have rolled slightly past it).
     const stopPt = bus.route.pointAt(target.km);
@@ -2860,7 +2996,7 @@
     if (originMarker) originMarker.setLngLat(stopPt).setOffset([0, 0]);
     locationInput.value = target.name;
     if (destinationCoord) clearDestination(); // trip complete — you're there now
-    showArrival(target.name, stats.plate, minutes, km);
+    showArrival({ place: 'Welcome to ' + target.name + '.', stats: ['Bus ' + plateText, formatDuration(minutes), km.toFixed(1) + ' km'] });
   }
 
   const arrivalOverlay = document.getElementById('arrivalOverlay');
@@ -2869,16 +3005,19 @@
     const h = Math.floor(min / 60), m = min % 60;
     return h + ' hr' + (m ? ' ' + m + ' min' : '');
   }
-  function showArrival(placeName, plate, minutes, km) {
-    document.getElementById('arrivalPlace').textContent = 'Welcome to ' + placeName + '.';
+  // opts: { place, stats:[...], emoji?, title?, confetti? } — also used for the transfer notice.
+  function showArrival(opts) {
+    document.getElementById('arrivalEmoji').textContent = opts.emoji || '🎉';
+    document.getElementById('arrivalTitle').textContent = opts.title || "You've arrived!";
+    document.getElementById('arrivalPlace').textContent = opts.place;
     const stats = document.getElementById('arrivalStats');
     stats.innerHTML = '';
-    ['Bus ' + plate, formatDuration(minutes), km.toFixed(1) + ' km'].forEach(t => {
+    opts.stats.forEach(t => {
       const el = document.createElement('span'); el.textContent = t; stats.appendChild(el);
     });
     arrivalOverlay.classList.add('open');
     document.getElementById('arrivalDone').focus();
-    launchConfetti();
+    if (opts.confetti !== false) launchConfetti();
   }
   function closeArrival() {
     arrivalOverlay.classList.remove('open');
@@ -2974,6 +3113,7 @@
       const boardMs = nowMs();
       rideStats = { plate: bus.plate, baseSpeed: bus.baseSpeed, startSimMs: boardMs, lastSimMs: boardMs,
                     arrivalSimMs: nextPassTimeMs(bus, rideTarget.km, boardMs) };
+      if (trackedTrip && trackedTrip.boardedSimMs === null) trackedTrip.boardedSimMs = boardMs;
       updateRide(bus);
     } else {
       if (ridingRoute && map.getLayer(ridingRoute.layerId)) map.setPaintProperty(ridingRoute.layerId, 'line-opacity', ridingRoute.opacity);
@@ -3153,6 +3293,267 @@
      closest, recommended) the person chooses from, similar to a
      ride-hailing app's vehicle picker.
      ========================================================= */
+  /* =========================================================
+     TRIPS — one bus, or several with transfers
+     A trip is a list of legs, each ridden on one bus. Destinations on the
+     other line (e.g. Tarlac → Iba) become two legs that change buses in
+     San Fernando, where the lines meet. The second bus is picked so it
+     reaches the transfer point after the first bus drops you there, plus
+     a buffer to get off and cross over. Works for any number of legs.
+     ========================================================= */
+  const TRANSFER_BUFFER_MIN = 5;
+  let trackedTrip = null;        // { legs:[{route, fromKm, toKm, dir, fromName, toName, busId}], activeLeg, transferAt, destName, ... }
+  let transferMarker = null;
+
+  function busById(id) { return fleet.find(b => b.id === id) || null; }
+  function minutesForKm(bus, km, multiplier) { return km / Math.max(bus.baseSpeed * multiplier, 5) * 60; }
+  // Minutes until `bus` reaches `km` heading `dir` (turnarounds included), or null.
+  function busArrivalMin(bus, km, dir, multiplier) {
+    const a = busApproach(bus, km, dir);
+    return a ? minutesForKm(bus, a.km, multiplier) : null;
+  }
+  // Is the bus still coming toward `km` in `dir` (hasn't passed it yet)?
+  function busStillApproaching(bus, km, dir) {
+    return bus.direction === dir && (dir === 1 ? bus.distanceKm <= km + 0.05 : bus.distanceKm >= km - 0.05);
+  }
+
+  // Legs (without buses) for a trip that needs a transfer; null if one line covers it.
+  function transferLegs(originC, destC) {
+    const plan = transferPlan(originC, destC);
+    if (!plan) return null;
+    return {
+      transferAt: plan.at,
+      legs: [
+        { route: plan.first.route, fromKm: plan.first.fromKm, toKm: plan.first.toKm, dir: plan.first.dir, toName: plan.at },
+        { route: plan.second.route, fromKm: plan.second.fromKm, toKm: plan.second.toKm, dir: plan.second.dir, fromName: plan.at }
+      ]
+    };
+  }
+
+  // Earliest bus for leg `leg` that reaches its boarding point at least `notBeforeMin` from now.
+  function pickLegBus(leg, notBeforeMin, multiplier, excludeIds) {
+    let best = null;
+    fleet.forEach(bus => {
+      if (bus.route !== leg.route || (excludeIds && excludeIds.includes(bus.id))) return;
+      const eta = busArrivalMin(bus, leg.fromKm, leg.dir, multiplier);
+      if (eta === null || eta < notBeforeMin) return;
+      if (!best || eta < best.eta) best = { bus, eta };
+    });
+    return best;
+  }
+
+  // Timings for a trip from the current bus positions: per leg, when its bus
+  // reaches the boarding point, the ride time, and the wait before it.
+  function tripTimeline(trip, multiplier) {
+    let clock = 0; // minutes from now when the rider is ready at the current leg's boarding point
+    return trip.legs.map((leg, i) => {
+      const bus = busById(leg.busId);
+      const rideMin = bus ? minutesForKm(bus, Math.abs(leg.toKm - leg.fromKm), multiplier) : 0;
+      if (i < trip.activeLeg) return { leg, bus, done: true, rideMin };
+      let boardMin;
+      if (i === trip.activeLeg && isRidingBus) {
+        boardMin = 0; // already on it
+        const remaining = bus ? Math.abs(leg.toKm - bus.distanceKm) : 0;
+        const r = bus ? minutesForKm(bus, remaining, multiplier) : 0;
+        const out = { leg, bus, riding: true, boardMin, waitMin: 0, rideMin: r, arriveMin: r };
+        clock = r;
+        return out;
+      }
+      if (i === trip.activeLeg && trip.waitingSimMs) boardMin = Math.max(0, (trip.waitingSimMs - nowMs()) / 60000);
+      else boardMin = bus ? busArrivalMin(bus, leg.fromKm, leg.dir, multiplier) : null;
+      if (boardMin === null) boardMin = Infinity;
+      const waitMin = Math.max(0, boardMin - clock);
+      const arriveMin = boardMin + rideMin;
+      clock = arriveMin + (i < trip.legs.length - 1 ? 0 : 0);
+      return { leg, bus, boardMin, waitMin, rideMin, arriveMin };
+    });
+  }
+
+  // Up to `limit` two-bus trip options for origin → destination.
+  function planTransferTrips(originC, destC, destName, multiplier, limit) {
+    const skeleton = transferLegs(originC, destC);
+    if (!skeleton) return [];
+    const [L1, L2] = skeleton.legs;
+    const firsts = fleet.filter(b => b.route === L1.route && busStillApproaching(b, L1.fromKm, L1.dir))
+      .map(bus => ({ bus, eta: minutesForKm(bus, Math.abs(L1.fromKm - bus.distanceKm), multiplier) }))
+      .sort((a, b) => a.eta - b.eta).slice(0, 6);
+    const trips = [];
+    firsts.forEach(f => {
+      const atTransfer = f.eta + minutesForKm(f.bus, Math.abs(L1.toKm - L1.fromKm), multiplier);
+      const second = pickLegBus(L2, atTransfer + TRANSFER_BUFFER_MIN, multiplier);
+      if (!second) return;
+      const trip = makeTrip(skeleton, [f.bus.id, second.bus.id], originC, destC, destName);
+      const t = tripTimeline(trip, multiplier);
+      trip.leaveMin = t[0].boardMin; trip.totalMin = t[t.length - 1].arriveMin; trip.transferWaitMin = t[1].waitMin;
+      trips.push(trip);
+    });
+    return trips;
+  }
+  function makeTrip(skeleton, busIds, originC, destC, destName) {
+    const legs = skeleton.legs.map((l, i) => Object.assign({}, l, { busId: busIds[i] }));
+    legs[legs.length - 1].toName = destName || 'your destination';
+    const fares = legs.map(l => computeFare(l.route, l.fromKm, l.toKm));
+    return {
+      legs, activeLeg: 0, transferAt: skeleton.transferAt, originC, destC, destName: destName || 'your destination',
+      fareRegular: fares.reduce((t, f) => t + f.regular, 0), fareDiscounted: fares.reduce((t, f) => t + f.discounted, 0),
+      note: null, riddenKm: 0, boardedSimMs: null
+    };
+  }
+  function pickTripOptions(trips) {
+    const tagged = [], used = new Set();
+    const add = (tag, trip) => {
+      if (!trip) return;
+      const key = trip.legs.map(l => l.busId).join('-');
+      if (used.has(key)) return;
+      used.add(key); tagged.push({ tag, trip });
+    };
+    add('Arrives first', [...trips].sort((a, b) => a.totalMin - b.totalMin)[0]);
+    add('Leaves soonest', [...trips].sort((a, b) => a.leaveMin - b.leaveMin)[0]);
+    add('Shortest wait', [...trips].sort((a, b) => a.transferWaitMin - b.transferWaitMin)[0]);
+    // Often one trip wins every label; fill up with the next distinct trips so there's a real choice.
+    [...trips].sort((a, b) => a.totalMin - b.totalMin).forEach(t => { if (tagged.length < 3) add('Later bus', t); });
+    return tagged.slice(0, 3);
+  }
+  const clockIn = min => formatManilaClock(nowMs() + min * 60000);
+
+  function trackTrip(trip) {
+    stopTracking();
+    trackedTrip = trip;
+    const first = busById(trip.legs[0].busId);
+    openBusSheet(first, { keepTrip: true });
+    if (transferMarker) transferMarker.remove();
+    if (trip.transferAt) {
+      const T = trip.legs[0];
+      const el = document.createElement('div'); el.className = 'transfer-marker'; el.textContent = '⇄';
+      transferMarker = new maplibregl.Marker({ element: el }).setLngLat(T.route.pointAt(T.toKm))
+        .setPopup(new maplibregl.Popup({ offset: 14 }).setHTML('<strong>Change buses</strong><span>' + escapeHtml(trip.transferAt) + '</span>')).addTo(map);
+    }
+    updateTripLive(getSpeedMultiplier());
+    drawMyTripLine();
+    const bounds = new maplibregl.LngLatBounds();
+    trip.legs.forEach(l => { const b = busById(l.busId); if (b) bounds.extend(b.marker.getLngLat()); bounds.extend(l.route.pointAt(l.fromKm)); bounds.extend(l.route.pointAt(l.toKm)); });
+    map.fitBounds(bounds, { padding: { top: 90, bottom: 300, left: 40, right: 40 }, maxZoom: 11 });
+  }
+  function clearTripState() {
+    trackedTrip = null;
+    if (transferMarker) { transferMarker.remove(); transferMarker = null; }
+    if (!isRidingBus) {
+      if (map.getLayer('my-trip-route-line')) map.removeLayer('my-trip-route-line');
+      if (map.getSource('my-trip-route')) map.removeSource('my-trip-route');
+    }
+    document.getElementById('tripPanel').classList.add('hidden');
+  }
+
+  // Live: re-pick buses that were missed or can no longer connect, then render.
+  function updateTripLive(multiplier) {
+    const trip = trackedTrip;
+    if (!trip) return;
+    const i = trip.activeLeg, leg = trip.legs[i], notes = [];
+    let bus = busById(leg.busId);
+    // Not on the bus yet and it's gone past the boarding point (or left the road): take the next one.
+    if (!isRidingBus && !trip.waitingSimMs && (!bus || !busStillApproaching(bus, leg.fromKm, leg.dir))) {
+      const next = pickLegBus(leg, 0, multiplier, bus ? [bus.id] : []);
+      if (next) {
+        notes.push((bus ? bus.plate + ' passed your stop — ' : '') + 'switched to ' + next.bus.plate + '.');
+        leg.busId = next.bus.id; bus = next.bus;
+        openBusSheet(bus, { keepTrip: true, keepClosed: !busSheetOverlay.classList.contains('open') });
+      }
+    }
+    // Later legs: make sure each bus still arrives after the rider gets there.
+    let t = tripTimeline(trip, multiplier);
+    for (let j = i + 1; j < trip.legs.length; j++) {
+      const readyMin = t[j - 1].arriveMin + TRANSFER_BUFFER_MIN;
+      if (!t[j].bus || t[j].boardMin < readyMin - 1) {
+        const next = pickLegBus(trip.legs[j], readyMin, multiplier);
+        if (next && next.bus.id !== trip.legs[j].busId) {
+          notes.push('Connection updated: now ' + next.bus.plate + ' from ' + (trip.legs[j].fromName || 'the transfer point') + '.');
+          trip.legs[j].busId = next.bus.id;
+          t = tripTimeline(trip, multiplier);
+        }
+      }
+    }
+    if (notes.length) trip.note = notes.join(' ');
+    setTrackedMarkerVisual(trackedBusId);
+    renderTripPanel(t);
+  }
+
+  function renderTripPanel(timeline) {
+    const trip = trackedTrip, panel = document.getElementById('tripPanel');
+    if (!trip) { panel.classList.add('hidden'); return; }
+    const last = timeline[timeline.length - 1];
+    let html = '';
+    timeline.forEach((st, j) => {
+      const leg = st.leg, bus = st.bus;
+      const board = leg.fromName ? leg.fromName : describeRouteKm(leg.route, leg.fromKm).town;
+      const alight = leg.toName ? leg.toName : describeRouteKm(leg.route, leg.toKm).town;
+      const state = st.done ? 'done' : j === trip.activeLeg ? 'active' : '';
+      const when = st.done ? 'Done' : st.riding ? formatDuration(Math.max(1, Math.round(st.rideMin))) + ' left'
+        : isFinite(st.boardMin) ? (st.boardMin < 1 ? 'Now' : 'in ' + formatDuration(Math.round(st.boardMin))) : '—';
+      html += '<div class="trip-step ' + state + '" data-bus-id="' + (bus ? bus.id : '') + '">' +
+        '<span class="trip-leg-num">' + (j + 1) + '</span>' +
+        '<div class="trip-step-body"><div class="trip-step-title">' + lineDot(leg.route) + escapeHtml(leg.route.name) + ' · ' + escapeHtml(bus ? bus.plate : '—') + '</div>' +
+        '<div class="trip-step-sub">' + (st.riding ? 'On board → ' : 'Board at ' + escapeHtml(board) + ' → ') + escapeHtml(alight) +
+        (st.done || st.riding || !isFinite(st.boardMin) ? '' : ' · ' + clockIn(st.boardMin)) + ' · ~' + formatDuration(Math.max(1, Math.round(st.rideMin))) + ' ride</div></div>' +
+        '<span class="trip-step-when">' + when + '</span></div>';
+      if (j < timeline.length - 1) {
+        const nxt = timeline[j + 1];
+        html += '<div class="trip-change">Change buses in ' + escapeHtml(trip.transferAt) +
+          (nxt.done || !isFinite(nxt.waitMin) ? '' : ' · ~' + formatDuration(Math.max(1, Math.round(nxt.waitMin))) + ' wait') + '</div>';
+      }
+    });
+    html += '<div class="trip-summary">Arrive around ' + (isFinite(last.arriveMin) ? clockIn(last.arriveMin) : '—') + ' · Fare ₱' + trip.fareRegular + ' (₱' + trip.fareDiscounted + ' student/senior/PWD)</div>';
+    if (trip.note) html += '<div class="trip-note">' + escapeHtml(trip.note) + '</div>';
+    panel.innerHTML = html;
+    panel.classList.remove('hidden');
+  }
+  document.getElementById('tripPanel').addEventListener('click', (e) => {
+    const step = e.target.closest('.trip-step');
+    const bus = step && busById(Number(step.dataset.busId));
+    if (bus) map.easeTo({ center: bus.marker.getLngLat(), zoom: Math.max(map.getZoom(), 11) });
+  });
+
+  // Dev Mode ride reached the end of a leg that isn't the last: get off and wait for the next bus.
+  function arriveAtTransfer(bus) {
+    const trip = trackedTrip, leg = trip.legs[trip.activeLeg], stats = rideStats;
+    trip.riddenKm += Math.max(0, stats.arrivalSimMs - stats.startSimMs) / 3600000 * stats.baseSpeed;
+    if (trip.boardedSimMs === null) trip.boardedSimMs = stats.startSimMs;
+    const arrivedMs = stats.arrivalSimMs;
+    toggleRiding(); // off this bus
+    const stopPt = leg.route.pointAt(leg.toKm);
+    originCoord = stopPt;
+    if (originMarker) originMarker.setLngLat(stopPt).setOffset([0, 0]);
+    locationInput.value = trip.transferAt + ' (transfer)';
+    trip.activeLeg++;
+    const next = trip.legs[trip.activeLeg];
+    // Exact simulated arrival of each candidate at the transfer point, in the right direction.
+    let best = null;
+    fleet.forEach(b => {
+      if (b.route !== next.route) return;
+      const t = nextPassTimeMs(b, next.fromKm, arrivedMs + 2 * 60000, next.dir);
+      if (!best || t < best.t) best = { bus: b, t };
+    });
+    if (!best) { stopTracking(); return; }
+    if (best.bus.id !== next.busId) trip.note = 'Connection updated: now ' + best.bus.plate + '.';
+    next.busId = best.bus.id;
+    trip.waitingSimMs = best.t;
+    openBusSheet(best.bus, { keepTrip: true, keepClosed: true });
+    const waitMin = Math.max(1, Math.round((best.t - nowMs()) / 60000));
+    showArrival({
+      emoji: '🔁', title: 'Time to change buses', place: 'Get off here in ' + trip.transferAt + '.',
+      stats: ['Next: ' + best.bus.plate, next.route.name, 'in ' + formatDuration(waitMin)], confetti: false
+    });
+  }
+  // While waiting at a transfer in a Dev Mode ride: board automatically when the bus arrives.
+  function checkTripBoarding() {
+    const trip = trackedTrip;
+    if (!trip || !trip.waitingSimMs || nowMs() < trip.waitingSimMs) return;
+    trip.waitingSimMs = null;
+    const bus = busById(trip.legs[trip.activeLeg].busId);
+    if (!bus) return;
+    trip.note = 'Boarded ' + bus.plate + '.';
+    if (!isRidingBus) toggleRiding();
+  }
+
   const bottomStack = document.getElementById('bottomStack');
   const busOptionsOverlay = document.getElementById('busOptionsOverlay');
   const busOptionsList = document.getElementById('busOptionsList');
@@ -3191,6 +3592,8 @@
 
   function renderBusOptions() {
     busOptionsList.innerHTML = '';
+    document.getElementById('busOptionsTitle').textContent = 'Choose a bus';
+    if (originCoord && destinationCoord && transferLegs(originCoord, destinationCoord)) { renderTripOptions(); return; }
     if (!originCoord) {
       busOptionsList.innerHTML = '<p style="text-align:center;color:var(--text-secondary);font-size:13px;padding:16px 4px;">Set your location first so I can find buses near you.</p>';
       return;
@@ -3212,6 +3615,35 @@
         busOptionsOverlay.classList.remove('open');
         openBusSheet(opt.candidate.bus);
       });
+      busOptionsList.appendChild(card);
+    });
+  }
+
+  function renderTripOptions() {
+    const m = getSpeedMultiplier();
+    const options = pickTripOptions(planTransferTrips(originCoord, destinationCoord, destinationInput.value, m));
+    const sk = transferLegs(originCoord, destinationCoord);
+    document.getElementById('busOptionsTitle').textContent = 'Choose a trip · 2 buses';
+    if (!options.length) {
+      busOptionsList.innerHTML = '<p style="text-align:center;color:var(--text-secondary);font-size:13px;padding:16px 4px;">No connecting buses right now.</p>';
+      return;
+    }
+    const intro = document.createElement('p');
+    intro.style.cssText = 'margin:-6px 0 2px;font-size:12px;color:var(--text-secondary);';
+    intro.textContent = 'No single line goes there — ride the ' + sk.legs[0].route.name + ' to ' + sk.transferAt + ', then the ' + sk.legs[1].route.name + '.';
+    busOptionsList.appendChild(intro);
+    options.forEach(({ tag, trip }) => {
+      const [b1, b2] = trip.legs.map(l => busById(l.busId));
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'trip-option-card';
+      card.innerHTML =
+        '<div class="trip-option-head"><span class="bus-option-tag">' + tag + '</span><span class="trip-option-total">' + formatDuration(Math.round(trip.totalMin)) + '</span></div>' +
+        '<div class="trip-leg-row"><span class="trip-leg-num">1</span><span>' + lineDot(trip.legs[0].route) + '<b>' + b1.plate + '</b> · ' + trip.legs[0].route.name + ' · in ' + formatDuration(Math.max(1, Math.round(trip.leaveMin))) + '</span></div>' +
+        '<div class="trip-transfer-row">⇄ Change in ' + escapeHtml(trip.transferAt) + ' · ~' + formatDuration(Math.max(1, Math.round(trip.transferWaitMin))) + ' wait</div>' +
+        '<div class="trip-leg-row"><span class="trip-leg-num">2</span><span>' + lineDot(trip.legs[1].route) + '<b>' + b2.plate + '</b> · ' + trip.legs[1].route.name + ' → ' + escapeHtml(trip.destName) + '</span></div>' +
+        '<div class="trip-option-foot">Arrive around ' + clockIn(trip.totalMin) + ' · ₱' + trip.fareRegular + ' total</div>';
+      card.addEventListener('click', () => { busOptionsOverlay.classList.remove('open'); trackTrip(trip); });
       busOptionsList.appendChild(card);
     });
   }
@@ -4070,7 +4502,8 @@
 
       const buses = upcomingBuses(stops, 2);
       if (!buses.length) return { ok: false, reason: 'no_buses', tell_user: 'No buses are running on that side right now.' };
-      actions.push({ type: 'track', busId: buses[0].bus.id, label: 'Track ' + buses[0].bus.plate });
+      if (plan) actions.push({ type: 'track_trip', destCoord: destC, destName: destPlace.name, label: 'Track this trip (2 buses)' });
+      else actions.push({ type: 'track', busId: buses[0].bus.id, label: 'Track ' + buses[0].bus.plate });
       actions.push({ type: 'show', coord: from.point.coord, name: 'Boarding point', label: 'Show boarding point' });
       return {
         ok: true,
@@ -4293,7 +4726,14 @@
   }
   function runChatAction(a) {
     const mobile = !DESKTOP_QUERY.matches; // the chat sheet covers the map on phones
-    if (a.type === 'track') {
+    if (a.type === 'track_trip') {
+      if (!originCoord) { addMessage('Set your location first, then I can plan the trip.', 'bot'); return; }
+      const opts = pickTripOptions(planTransferTrips(originCoord, a.destCoord, a.destName, getSpeedMultiplier()));
+      if (!opts.length) { addMessage("I couldn't find connecting buses right now. Try again in a bit.", 'bot'); return; }
+      if (mobile) closeChat();
+      if (!destinationCoord) setDestination(a.destCoord, a.destName);
+      trackTrip(opts[0].trip);
+    } else if (a.type === 'track') {
       const bus = fleet.find(b => b.id === a.busId);
       if (!bus) { addMessage('That bus is no longer on the road. Ask me again for a fresh one.', 'bot'); return; }
       if (mobile) closeChat();
